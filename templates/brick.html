@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ brick.name }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css"
+          integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+
+</head>
+<body>
+<form>
+    <div class="container">
+        <h1>브릭 조회</h1>
+        <h2>{{ brick.name }}</h2>
+        <hr/>
+        <h3>Verify token</h3>
+        <div class="row">
+            <div class="col-lg-6">
+                <input type="text" class="form-control" value="{{ brick.verify_token }}"></div>
+        </div>
+        <br/>
+        <h3>Access token</h3>
+        <div class="row">
+            <div class="col-lg-6">
+                <input type="text" class="form-control" value="{{ brick.access_token }}"></div>
+        </div>
+        <br/><br/>
+
+        <h3>Persistent menu</h3>
+        <hr/>
+        <h4>시작 메뉴</h4>
+        <p>{{ brick.persistent_menu[0]['persistent_menu'] }}</p><br/>
+        <h4>화이트 도메인</h4>
+        {% for domain in brick.persistent_menu[0]['whitelisted_domains'] %}
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{ domain }}">
+                        <span class="input-group-btn">
+                            <button class="btn btn-secondary" type="button">X</button>
+                        </span>
+                    </div>
+                </div>
+            </div><br/>
+        {% endfor %}
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" value="">
+                    <span class="input-group-btn">
+                        <button class="btn btn-secondary" type="button">Add</button>
+                    </span>
+                </div>
+            </div>
+        </div><br/>
+        <h4>Get started</h4>
+        <input type="text" class="form-control" value="{{ brick.persistent_menu[0]['get_started']['payload'] }}"><br/><br/>
+        <h3>Bricks</h3>
+        <hr/>
+        {% for brick_cond in brick.bricks %}
+            <table class="table">
+              <thead class="thead-light">
+                <tr>
+                  <th scope="col" width="15%">Properties</th>
+                  <th scope="col" width="*">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Type</th>
+                  <td>{{ brick_cond.type }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Value</th>
+                  <td>{{ brick_cond.value }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Actions</th>
+                  <td>{{ brick_cond.actions }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Conditions</th>
+                    <td>{{ brick_cond.conditions }}</td>
+                </tr>
+              </tbody>
+            </table>
+        {% endfor %}
+    </div>
+
+
+</form>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"
+        integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
+        integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
+        crossorigin="anonymous"></script>
+</body>
+</html>
