@@ -1,10 +1,53 @@
-from flask import request, render_template
+from flask import request, render_template, jsonify, session
 from chatbrick_admin import app, mongo3
-from bson.json_util import dumps
+from bson.json_util import dumps, CANONICAL_JSON_OPTIONS, RELAXED_JSON_OPTIONS
 from bson.objectid import ObjectId
+from json import loads
 
 
-@app.route('/brick/<brick_id>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def cursor_to_dict(datas):
+    dict_data = []
+    for data in datas:
+        dict_data.append(data)
+
+    return dict_data
+
+
+@app.route('/api/login/', methods=['POST', 'DELETE'])
+def brick_login():
+    if request.method == 'POST':
+        fb_id = request.form.get('fb_id', False)
+        if fb_id:
+            session['fb_id'] = fb_id
+            return jsonify({
+                'success': True
+            })
+    elif request.method == 'DELETE':
+        del session['fb_id']
+        return jsonify({
+            'success': True
+        })
+
+    return jsonify({
+        'success': False
+    })
+
+
+@app.route('/api/brick/')
+def get_brick():
+    if 'fb_id' in session:
+        print(session['fb_id'])
+        return jsonify({
+            'success': True,
+            'data': loads(dumps(mongo3.db.facebook.find({'user_id': session['fb_id']})))
+        })
+    return jsonify({
+        'success': False,
+        'msg': '로그인 상태가 아닙니다.'
+    })
+
+
+@app.route('/api/brick/<brick_id>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def brick_by_id(brick_id):
     if request.method == 'GET':
         return render_template('brick.html', brick=mongo3.db.facebook.find_one_or_404({'_id': ObjectId(brick_id)}))
@@ -12,7 +55,7 @@ def brick_by_id(brick_id):
         return ''
 
 
-@app.route('/brick/', methods=['GET', 'POST'])
+@app.route('/api/brick/', methods=['GET', 'POST'])
 def brick():
     if request.method == 'GET':
         return render_template('list.html', bricks=mongo3.db.facebook.find({}))
