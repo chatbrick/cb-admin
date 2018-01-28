@@ -12,7 +12,7 @@ from flask import request, render_template, session, url_for, send_from_director
 from werkzeug.utils import secure_filename
 
 from chatbrick_admin import app, mongo3
-from chatbrick_admin.set.template import Container, PERSISTENT_MENU
+from chatbrick_admin.set.designer_portfolio import DesignerPortfolio
 
 logger = logging.getLogger(__name__)
 
@@ -153,10 +153,8 @@ def get_brick():
 def create_set():
     if 'fb_id' in session:
         req = request.get_json()
-        set_data = req['data']
         if req['type'] == 'designer_portfolio':
-            res = Container(name=req['name'], desc=req['desc'], persistent_menu=PERSISTENT_MENU, bricks=[],
-                            user_id=session['fb_id'], type='portfolio')
+            res = DesignerPortfolio(fb_id=session['fb_id'], req=req)
         return res.to_data()
     return {
         'success': False,

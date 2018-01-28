@@ -11,13 +11,23 @@ class FacebookBrick(object):
         data = {
             'type': self.brick_type,
             'value': self.value,
-            'actions': [action for action in self.actions]
+            'actions': [action.to_data() for action in self.actions]
         }
 
         if self.condition:
             data['conditions'] = [cond.to_data for cond in self.condition]
 
         return data
+
+
+class FacebookGeneralAction(object):
+    def __init__(self, message):
+        self.message = message
+
+    def to_data(self):
+        return {
+            'message': self.message.get_data()
+        }
 
 
 class FacebookBrickAction(object):
