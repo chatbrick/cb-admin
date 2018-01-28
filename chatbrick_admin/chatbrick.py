@@ -154,8 +154,17 @@ def create_set():
     if 'fb_id' in session:
         req = request.get_json()
         if req['type'] == 'designer_portfolio':
-            res = DesignerPortfolio(fb_id=session['fb_id'], req=req)
-        return res.to_data()
+            res = DesignerPortfolio(fb_id=session['fb_id'], req=req).to_data()
+            res['settings'] = req
+            rslt = mongo3.db.facebook.insert_one(res)
+        print()
+        return {
+            'success': True,
+            'result': {
+                'inserted_ids': str(rslt.inserted_id),
+                'id': res['id']
+            }
+        }
     return {
         'success': False,
         'msg': '로그인 상태가 아닙니다.'

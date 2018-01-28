@@ -1,6 +1,10 @@
 from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction
-from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate
+from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, ImageAttachment
 
+WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
+SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
+SUMMARY_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_summary.png'
+CONTACT_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_contact.png'
 PERSISTENT_MENU = [
     {
         "whitelisted_domains": [
@@ -61,10 +65,10 @@ class DesignerPortfolio(object):
                                                            buttons=[
                                                                PostBackButton(payload='VIEW_PORTFOLIO',
                                                                               title='View')]),
-                                                   Element(title='Portfolio',
-                                                           subtitle='%s님의 포트폴리오를 보고 싶은가요?' % self.data['basic'][
+                                                   Element(title='Contact',
+                                                           subtitle='%s님에게 이메일을 보내고 싶은가요?' % self.data['basic'][
                                                                'name'],
-                                                           buttons=[PostBackButton(payload='VIEW_PORTFOLIO',
+                                                           buttons=[PostBackButton(payload='CONTACT',
                                                                                    title='View')])
                                                    ]
                                          )
@@ -98,7 +102,96 @@ class DesignerPortfolio(object):
             ))
         ]))
 
-        #Profile / 2.1.1
+        # Work / 2.1.1
+        if len(self.data['work']):
+            work_element = [
+                Element(title='Work',
+                        subtitle='%s님의 경력 사항입니다.' % self.data['basic']['name'],
+                        image_url=WORK_IMAGE_URL)
+            ]
+
+            for work in self.data['work']:
+                work_element.append(Element(title=work['name'], subtitle='{period}\n{field}'.format(**work)))
+
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_WORK', actions=[
+                FacebookGeneralAction(message=Message(
+                    attachment=TemplateAttachment(
+                        payload=ListTemplate(elements=work_element, top_element_style='LARGE', buttons=[
+                            PostBackButton(title='Menu', payload='get_started')
+                        ])
+                    )
+                ))
+            ]))
+        else:
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_WORK', actions=[
+                FacebookGeneralAction(message=Message(text='%s님이 아직 Work 항목을 입력하지 않았습니다.' % self.data['basic']['name']))
+            ]))
+
+        # Specialties / 2.1.2
+        if len(self.data['specialties']):
+            special_element = [
+                Element(title='Specialties',
+                        subtitle='%s님의 보유기술 및 능력입니다.' % self.data['basic']['name'],
+                        image_url=SPECIALTIES_IMAGE_URL)
+            ]
+
+            for special in self.data['specialties']:
+                special_element.append(Element(title=special['name'], subtitle=special['detail']))
+
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SPECIALTIES', actions=[
+                FacebookGeneralAction(message=Message(
+                    attachment=TemplateAttachment(
+                        payload=ListTemplate(elements=special_element, top_element_style='LARGE', buttons=[
+                            PostBackButton(title='Menu', payload='get_started')
+                        ])
+                    )
+                ))
+            ]))
+        else:
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SPECIALTIES', actions=[
+                FacebookGeneralAction(
+                    message=Message(text='%s님이 아직 Specialties 항목을 입력하지 않았습니다.' % self.data['basic']['name']))
+            ]))
+
+        # Summary / 2.1.3
+        if self.data['summary']:
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SUMMARY', actions=[
+                FacebookGeneralAction(message=Message(
+                    attachment=ImageAttachment(url=SUMMARY_IMAGE_URL)
+                )),
+                FacebookGeneralAction(message=Message(
+                    text=self.data['summary']
+                ))
+            ]))
+        else:
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SUMMARY', actions=[
+                FacebookGeneralAction(
+                    message=Message(text='%s님이 아직 Summary 항목을 입력하지 않았습니다.' % self.data['basic']['name']))
+            ]))
+
+        # Contact / 4
+        if self.data['basic'].get('email', False):
+            designer_brick.append(FacebookBrick(brick_type='postback', value='CONTACT', actions=[
+                FacebookGeneralAction(message=Message(
+                    attachment=TemplateAttachment(
+                        payload=GenericTemplate(elements=[
+                            Element(title='Contact',
+                                    subtitle='자세한 문의는 아래의 메일보내기 버튼을 이용해주세요.',
+                                    image_url=CONTACT_IMAGE_URL,
+                                    buttons=[
+                                        PostBackButton(title='Send E-Mail',
+                                                       payload='SEND_EMAIL_TO_USER')
+                                    ]
+                                    )
+                        ])
+                    )
+                ))
+            ]))
+        else:
+            designer_brick.append(FacebookBrick(brick_type='postback', value='CONTACT', actions=[
+                FacebookGeneralAction(
+                    message=Message(text='%s님이 아직 이메일을 입력하지 않았습니다.' % self.data['basic']['name']))
+            ]))
 
         return designer_brick
 
