@@ -1,5 +1,3 @@
-
-
 class FacebookBrick(object):
     def __init__(self, brick_type, value, actions, condition=None):
         self.brick_type = brick_type
@@ -15,7 +13,7 @@ class FacebookBrick(object):
         }
 
         if self.condition:
-            data['conditions'] = [cond.to_data for cond in self.condition]
+            data['conditions'] = self.condition
 
         return data
 
@@ -31,14 +29,22 @@ class FacebookGeneralAction(object):
 
 
 class FacebookBrickAction(object):
-    def __init__(self, brick_id, data=None):
+    def __init__(self, brick_id, input=None, data=None):
         self.id = brick_id
         self.data = data
+        self.input = input
 
     def to_data(self):
+        data = {
+            'id': self.id,
+        }
+
+        if self.data:
+            data['data'] = self.data
+
+        if self.input:
+            data['input'] = self.input
+
         return {
-            'brick': {
-                'id': self.id,
-                'data': self.data
-            }
+            'brick': data
         }

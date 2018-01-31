@@ -15,7 +15,7 @@ class Container(object):
             'type': self.data['type']
         }
 
-        if 'id' not in self.data:
+        if 'id' not in self.data or not self.data['id']:
             data['id'] = str(uuid.uuid4())
         else:
             data['id'] = self.data['id']

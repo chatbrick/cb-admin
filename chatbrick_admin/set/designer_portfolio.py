@@ -1,5 +1,8 @@
+import requests
+from bs4 import BeautifulSoup
 from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction
-from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, ImageAttachment
+from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
+    ImageAttachment, UrlButton
 
 WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
 SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
@@ -18,7 +21,7 @@ PERSISTENT_MENU = [
                     {
                         "type": "postback",
                         "title": "처음으로",
-                        "payload": "VIEW_PROFILE"
+                        "payload": "get_started"
                     },
                     {
                         "type": "web_url",
@@ -89,13 +92,13 @@ class DesignerPortfolio(object):
                                 buttons=[
                                     PostBackButton(title='Work', payload='VIEW_USERS_WORK'),
                                     PostBackButton(title='Specialties', payload='VIEW_USERS_SPECIALTIES'),
-                                    PostBackButton(title='Summary', payload='VIEW_USERS_SUMMARY')
+                                    PostBackButton(title='Summary', payload='VIEW_USERS_SUMMARY'),
                                 ],
                                 default_action={
-                                        'type': 'web_url',
-                                        'url': self.data['basic']['social'],
-                                        'webview_height_ratio': 'tall'
-                                    }
+                                    'type': 'web_url',
+                                    'url': self.data['basic']['social'],
+                                    'webview_height_ratio': 'tall'
+                                }
                                 )
                     ])
                 )
@@ -193,9 +196,42 @@ class DesignerPortfolio(object):
                     message=Message(text='%s님이 아직 이메일을 입력하지 않았습니다.' % self.data['basic']['name']))
             ]))
 
+        if self.data.get('portfolio', False) and self.data['portfolio']:
+            temp_element = []
+
+            for portfolio in self.data['portfolio'][:10]:
+                res = requests.get(portfolio,
+                                   headers={
+                                       'User-Agent': 'TelegramBot (like TwitterBot)',
+                                       'Accept': 'text/html'
+                                   })
+
+                soup = BeautifulSoup(res.text, 'lxml')
+
+                temp_element.append(Element(title=soup.find('meta', {'property': 'og:title'}).get('content'),
+                                            subtitle=soup.find('meta', {'property': 'og:description'}).get('content'),
+                                            image_url=soup.find('meta', {'property': 'og:image'}).get('content'),
+                                            buttons=[
+                                                UrlButton(title='View', url=portfolio)
+                                            ]
+                                            ))
+
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_PORTFOLIO', actions=[
+                FacebookGeneralAction(message=Message(
+                    attachment=TemplateAttachment(
+                        payload=GenericTemplate(elements=temp_element)
+                    )
+                ))
+            ]))
+        else:
+            designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_PORTFOLIO', actions=[
+                FacebookGeneralAction(
+                    message=Message(text='%s님이 아직 Portfolio 항목을 입력하지 않았습니다.' % self.data['basic']['name']))
+            ]))
+
         return designer_brick
 
     def to_data(self):
         return Container(name=self.req['name'], desc=self.req['desc'], persistent_menu=PERSISTENT_MENU,
                          bricks=self.make_the_bricks(),
-                         user_id=self.fb_id, type='portfolio').to_data()
+                         user_id=self.fb_id, type='portfolio', id=self.req.get('id', None)).to_data()

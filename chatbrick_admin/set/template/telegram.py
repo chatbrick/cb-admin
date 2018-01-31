@@ -39,14 +39,22 @@ class TelegramGeneralAction(object):
 
 
 class TelegramBrickAction(object):
-    def __init__(self, brick_id, data=None):
+    def __init__(self, brick_id, input=None, data=None):
         self.id = brick_id
         self.data = data
+        self.input = input
 
     def to_data(self):
+        data = {
+            'id': self.id,
+        }
+
+        if self.data:
+            data['data'] = self.data
+
+        if self.input:
+            data['input'] = self.input
+
         return {
-            'brick': {
-                'id': self.id,
-                'data': self.data
-            }
+            'brick': data
         }
