@@ -1,10 +1,331 @@
-from flask import request, render_template
-from chatbrick_admin import app, mongo3
+import logging
+import os
+import uuid
+from functools import wraps
+from json import loads, dumps
+
+import requests
 from bson.json_util import dumps
 from bson.objectid import ObjectId
+from flask import Response
+from flask import request, render_template, session, url_for, send_from_directory
+from werkzeug.utils import secure_filename
+
+from chatbrick_admin import app, mongo3
+from chatbrick_admin.set import DesignerPortfolio, Hackathon, Bricks
+
+logger = logging.getLogger(__name__)
+
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
 
-@app.route('/brick/<brick_id>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def as_json(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        res = f(*args, **kwargs)
+        res = dumps(res, ensure_ascii=False).encode('utf8')
+        return Response(res, content_type='application/json; charset=utf-8',
+                        headers={'Access-Control-Allow-Origin': 'http://localhost:3000',
+                                 'Access-Control-Allow-Credentials': 'true'})
+
+    return decorated_function
+
+
+def cursor_to_dict(datas):
+    dict_data = []
+    for data in datas:
+        dict_data.append(data)
+
+    return dict_data
+
+
+def get_facebook_account():
+    return {
+        'fb_id': session['fb_id'],
+        'fb_profile': session['fb_profile'],
+        'fb_name': session['fb_name'],
+        'fb_access_token': session['fb_access_token'],
+        'fb_signed_request': session['fb_signed_request']
+    }
+
+
+@app.route('/api/file/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'],
+                               filename)
+
+
+@app.route('/api/file/', methods=['POST'])
+@as_json
+def upload_file_to_server():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return {
+                'success': False,
+                'msg': '파일이 존재하지 않습니다.'
+            }
+        file = request.files['file']
+        if file.filename == '':
+            return {
+                'success': False,
+                'msg': '선택된 파일이 없습니다.'
+            }
+        if file and allowed_file(file.filename):
+            filename = '%s_%s' % (str(uuid.uuid4()), secure_filename(file.filename))
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return {
+                'success': True,
+                'data': {
+                    'url': '%s://www.chatbrick.io%s' % (request.scheme, url_for('uploaded_file', filename=filename))
+                }
+            }
+
+
+@app.route('/api/login/', methods=['POST', 'DELETE', 'GET'])
+@as_json
+def brick_login():
+    if request.method == 'POST':
+        fb_id = request.form.get('fb_id', False)
+        fb_profile = request.form.get('fb_profile', False)
+        fb_name = request.form.get('fb_name', False)
+        fb_access_token = request.form.get('fb_access_token', False)
+        fb_signed_request = request.form.get('fb_signed_request', False)
+
+        logger.info(fb_id)
+        if fb_id:
+            session['fb_id'] = fb_id
+            session['fb_profile'] = fb_profile
+            session['fb_name'] = fb_name
+            session['fb_access_token'] = fb_access_token
+            session['fb_signed_request'] = fb_signed_request
+            return {
+                'success': True,
+                'facebook': get_facebook_account(),
+            }
+    elif request.method == 'DELETE':
+        if 'fb_id' in session:
+            session.clear()
+        return {
+            'success': True
+        }
+    elif request.method == 'GET':
+        if 'fb_id' in session:
+            return {
+                'success': True,
+                'facebook': get_facebook_account(),
+            }
+
+        return {
+            'success': False,
+            'msg': '로그인 상태가 아닙니다.'
+        }
+
+    return {
+        'success': False
+    }
+
+
+@app.route('/api/brick/', methods=['GET'])
+@as_json
+def get_brick():
+    if 'fb_id' in session:
+        return {
+            'success': True,
+            'facebook': get_facebook_account(),
+            'data': loads(dumps(mongo3.db.facebook.find({'user_id': session['fb_id']},
+                                                        {"access_token": False, "verify_token": False,
+                                                         "persistent_menu": False, "bricks": False,
+                                                         "telegram": False,
+                                                         "settings": False})))
+        }
+    return {
+        'success': False,
+        'msg': '로그인 상태가 아닙니다.'
+    }
+
+
+@app.route('/api/brick/', methods=['PUT', 'PATCH'])
+@as_json
+def create_set():
+    if 'fb_id' in session:
+        req = request.get_json()
+        if req['type'] == 'designer_portfolio':
+            res = DesignerPortfolio(fb_id=session['fb_id'], req=req).to_data()
+            res['settings'] = req
+        elif req['type'] == 'hackathon':
+            res = Hackathon(fb_id=session['fb_id'], req=req).to_data()
+            res['settings'] = req
+        elif req['type'] == 'bricks':
+            brick_data = mongo3.db.brick.find({})
+            logger.info(brick_data)
+            res = Bricks(fb_id=session['fb_id'], req=req, bricks=brick_data).to_data()
+            res['settings'] = req
+
+        if res:
+            if request.method == 'PUT':
+                rslt = mongo3.db.facebook.insert_one(res)
+            elif request.method == 'PATCH':
+                if 'id' in req:
+                    rslt = mongo3.db.facebook.update_one({'id': req['id']}, {'$set': res}, upsert=False)
+                    return {
+                        'success': True,
+                        'data': {
+                            'matched_count': rslt.matched_count,
+                            'modified_count': rslt.modified_count,
+                        }
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'msg': 'ID 항목이 없습니다.'
+                    }
+        return {
+            'success': True,
+            'data': {
+                'inserted_ids': str(rslt.inserted_id),
+                'id': res['id']
+            }
+        }
+    return {
+        'success': False,
+        'msg': '로그인 상태가 아닙니다.'
+    }
+
+
+@app.route('/api/brick/<brick_id>/', methods=['GET', 'DELETE'])
+@as_json
+def select_and_delete_set(brick_id):
+    if request.method == 'GET':
+        result = mongo3.db.facebook.find_one({'id': brick_id}, {'persistent_menu': False, 'bricks': False})
+        if result:
+            return {
+                'success': True,
+                'data': result
+            }
+        else:
+            return {
+                'success': False,
+                'msg': '데이터가 존재하지 않습니다.'
+            }
+    elif request.method == 'DELETE':
+        result = mongo3.db.facebook.delete_one({'id': brick_id})
+        if result:
+            return {
+                'success': True,
+                'data': {
+                    'deleted_count': result.deleted_count
+                }
+            }
+        else:
+            return {
+                'success': False,
+                'msg': '데이터가 존재하지 않아 삭제를 실패했습니다.'
+            }
+    return {
+        'success': False,
+        'msg': '로그인 상태가 아닙니다.'
+    }
+
+
+@app.route('/api/brick/list/')
+@as_json
+def get_brick_list():
+    return {
+        'success': True,
+        'facebook': get_facebook_account(),
+        'data': loads(dumps(mongo3.db.brick.find({})))
+    }
+
+
+@app.route('/api/brick/<brick_id>/telegram/<telegram_token>/', methods=['PUT', 'DELETE'])
+@as_json
+def set_token_to_telegram(brick_id, telegram_token):
+    if request.method == 'PUT':
+        result = mongo3.db.facebook.update_one({'id': brick_id}, {'$set': {'telegram.token': telegram_token}},
+                                               upsert=False)
+        if result.matched_count:
+            result_of_register = requests.post(url='https://api.telegram.org/bot%s/setWebhook' % telegram_token, data={
+                'url': 'https://www.chatbrick.io/webhooks/%s/tg/' % brick_id
+            })
+            return {
+                'success': True,
+                'facebook': get_facebook_account(),
+                'data': {
+                    'matched_count': result.matched_count,
+                    'modified_count': result.modified_count,
+                    'telegram': result_of_register.json()
+                }
+            }
+    elif request.method == 'DELETE':
+        result = mongo3.db.facebook.update_one({'id': brick_id}, {'$set': {'telegram.token': ''}},
+                                               upsert=False)
+        if result.matched_count:
+            result_of_register = requests.post(url='https://api.telegram.org/bot%s/deleteWebhook' % telegram_token)
+            return {
+                'success': True,
+                'facebook': get_facebook_account(),
+                'data': {
+                    'matched_count': result.matched_count,
+                    'modified_count': result.modified_count,
+                    'telegram': result_of_register.json()
+                }
+            }
+    return {
+        'success': False,
+        'msg': '브릭이 존재하지 않습니다.'
+    }
+
+
+@app.route('/api/brick/<brick_id>/facebook/<page_id>/<access_token>/', methods=['PUT'])
+@as_json
+def set_token_to_facebook(brick_id, page_id, access_token):
+    if request.method == 'PUT':
+        result = mongo3.db.facebook.update_one({'id': brick_id},
+                                               {'$set': {'page_id': page_id, 'access_token': access_token}},
+                                               upsert=False)
+        if result.matched_count:
+            return {
+                'success': True,
+                'facebook': get_facebook_account(),
+                'data': {
+                    'matched_count': result.matched_count,
+                    'modified_count': result.modified_count,
+                }
+            }
+    return {
+        'success': False,
+        'msg': '브릭이 존재하지 않습니다.'
+    }
+
+
+@app.route('/api/brick/<brick_id>/facebook/', methods=['DELETE'])
+@as_json
+def delete_token_to_facebook(brick_id):
+    if request.method == 'DELETE':
+        result = mongo3.db.facebook.update_one({'id': brick_id},
+                                               {'$set': {'page_id': '', 'access_token': ''}},
+                                               upsert=False)
+        if result.matched_count:
+            return {
+                'success': True,
+                'facebook': get_facebook_account(),
+                'data': {
+                    'matched_count': result.matched_count,
+                    'modified_count': result.modified_count,
+                }
+            }
+    return {
+        'success': False,
+        'msg': '브릭이 존재하지 않습니다.'
+    }
+
+
+@app.route('/api/test/brick/<brick_id>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def brick_by_id(brick_id):
     if request.method == 'GET':
         return render_template('brick.html', brick=mongo3.db.facebook.find_one_or_404({'_id': ObjectId(brick_id)}))
@@ -12,7 +333,7 @@ def brick_by_id(brick_id):
         return ''
 
 
-@app.route('/brick/', methods=['GET', 'POST'])
+@app.route('/api/test/brick/', methods=['GET', 'POST'])
 def brick():
     if request.method == 'GET':
         return render_template('list.html', bricks=mongo3.db.facebook.find({}))
