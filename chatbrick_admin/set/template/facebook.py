@@ -29,10 +29,9 @@ class FacebookGeneralAction(object):
 
 
 class FacebookBrickAction(object):
-    def __init__(self, brick_id, input=None, data=None):
+    def __init__(self, brick_id, data=None):
         self.id = brick_id
         self.data = data
-        self.input = input
 
     def to_data(self):
         data = {
@@ -41,9 +40,6 @@ class FacebookBrickAction(object):
 
         if self.data:
             data['data'] = self.data
-
-        if self.input:
-            data['input'] = self.input
 
         return {
             'brick': data

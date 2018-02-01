@@ -12,7 +12,7 @@ from flask import request, render_template, session, url_for, send_from_director
 from werkzeug.utils import secure_filename
 
 from chatbrick_admin import app, mongo3
-from chatbrick_admin.set import DesignerPortfolio, Hackathon
+from chatbrick_admin.set import DesignerPortfolio, Hackathon, Bricks
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,12 @@ def create_set():
         elif req['type'] == 'hackathon':
             res = Hackathon(fb_id=session['fb_id'], req=req).to_data()
             res['settings'] = req
+        elif req['type'] == 'bricks':
+            brick_data = mongo3.db.brick.find({})
+            logger.info(brick_data)
+            res = Bricks(fb_id=session['fb_id'], req=req, bricks=brick_data).to_data()
+            res['settings'] = req
+
         if res:
             if request.method == 'PUT':
                 rslt = mongo3.db.facebook.insert_one(res)
@@ -246,7 +252,6 @@ def set_token_to_telegram(brick_id, telegram_token):
             result_of_register = requests.post(url='https://api.telegram.org/bot%s/setWebhook' % telegram_token, data={
                 'url': 'https://www.chatbrick.io/webhooks/%s/tg/' % brick_id
             })
-            print()
             return {
                 'success': True,
                 'facebook': get_facebook_account(),

@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction
+from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
     ImageAttachment, UrlButton
 
@@ -228,6 +228,16 @@ class DesignerPortfolio(object):
                 FacebookGeneralAction(
                     message=Message(text='%s님이 아직 Portfolio 항목을 입력하지 않았습니다.' % self.data['basic']['name']))
             ]))
+
+        designer_brick.append(FacebookBrick(brick_type='postback', value='SEND_EMAIL_TO_USER',
+                                            actions=[
+                                                FacebookBrickAction(
+                                                    brick_id='mailer',
+                                                    data=[
+
+                                                    ]
+                                                )
+                                            ]))
 
         return designer_brick
 
