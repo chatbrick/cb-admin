@@ -27,7 +27,7 @@ class TelegramBrick(object):
         }
 
         if self.edits:
-            data['edits'] = self.edits
+            data['edits'] = [action.to_data() for action in self.edits]
 
         return data
 
