@@ -12,7 +12,10 @@ class Container(object):
             'bricks': self.data['bricks'],
             'user_id': self.data['user_id'],
             'desc': self.data['desc'],
-            'type': self.data['type']
+            'type': self.data['type'],
+            'telegram': {
+                'token': ''
+            }
         }
 
         if 'id' not in self.data or not self.data['id']:
@@ -24,7 +27,7 @@ class Container(object):
             data['access_token'] = self.data['access_token']
 
         if 'telegram' in self.data:
-            data['telegram'] = self.data['telegram'].to_data()
+            data['telegram']['bricks'] = [brick.to_data() for brick in self.data['telegram']]
 
         if 'persistent_menu' in self.data:
             data['persistent_menu'] = self.data['persistent_menu']

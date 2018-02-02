@@ -58,7 +58,7 @@ class Hackathon(object):
         self.req = req
         self.data = req['data']
 
-    def make_the_bricks(self):
+    def make_the_bricks_for_facebook(self):
         designer_brick = []
         hackathon_name = self.data['basic']['name']
 
@@ -429,7 +429,12 @@ class Hackathon(object):
 
         return designer_brick
 
+    def make_the_bricks_for_telegram(self):
+        designer_brick = []
+
+        return designer_brick
+
     def to_data(self):
         return Container(name=self.req['name'], desc=self.req['desc'], persistent_menu=PERSISTENT_MENU,
-                         bricks=self.make_the_bricks(),
+                         bricks=self.make_the_bricks_for_facebook(), telegram=self.make_the_bricks_for_telegram(),
                          user_id=self.fb_id, type='hackathon', id=self.req.get('id', None)).to_data()

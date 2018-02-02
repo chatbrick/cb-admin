@@ -1,8 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
-from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction
+from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction, \
+    TelegramBrick, TelegramGeneralAction
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
     ImageAttachment, UrlButton
+import blueforge.apis.telegram as tg
 
 WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
 SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
@@ -51,7 +53,7 @@ class DesignerPortfolio(object):
         self.req = req
         self.data = req['data']
 
-    def make_the_bricks(self):
+    def make_the_bricks_for_facebook(self):
         designer_brick = []
         # get_started (1.1, 1.2)
         designer_brick.append(FacebookBrick(brick_type='postback', value='get_started', actions=[
@@ -241,7 +243,48 @@ class DesignerPortfolio(object):
 
         return designer_brick
 
+    def make_the_bricks_for_telegram(self):
+        designer_brick = []
+
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='bot_command',
+                value='start',
+                actions=[
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text=self.data['custom_settings']['get_started']
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text='*[{name}]({social})님의 프로필입니다.*\nSpecial: {special}\nResidence: {residence}'.format(
+                                **self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    tg.CallbackButton(
+                                        text='Profile',
+                                        callback_data='profile'
+                                    ),
+                                    tg.CallbackButton(
+                                        text='Portfolio',
+                                        callback_data='portfolio'
+                                    ),
+                                    tg.CallbackButton(
+                                        text='Contact',
+                                        callback_data='contact'
+                                    )
+                                ]
+                            )
+                        )
+                    )
+                ]
+            )
+        )
+        return designer_brick
+
     def to_data(self):
         return Container(name=self.req['name'], desc=self.req['desc'], persistent_menu=PERSISTENT_MENU,
-                         bricks=self.make_the_bricks(),
+                         bricks=self.make_the_bricks_for_facebook(), telegram=self.make_the_bricks_for_telegram(),
                          user_id=self.fb_id, type='portfolio', id=self.req.get('id', None)).to_data()

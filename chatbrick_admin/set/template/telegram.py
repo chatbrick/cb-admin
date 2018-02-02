@@ -13,28 +13,33 @@ class Telegram(object):
 
 
 class TelegramBrick(object):
-    def __init__(self, brick_type, value, actions):
+    def __init__(self, brick_type, value, actions, edits=None):
         self.brick_type = brick_type
         self.value = value
         self.actions = actions
+        self.edits = edits
 
     def to_data(self):
-        return {
+        data = {
             'type': self.brick_type,
             'value': self.value,
-            'actions': [action for action in self.actions]
+            'actions': [action.to_data() for action in self.actions]
         }
+
+        if self.edits:
+            data['edits'] = self.edits
+
+        return data
 
 
 class TelegramGeneralAction(object):
-    def __init__(self, method, message):
-        self.method = method
+    def __init__(self, message):
         self.message = message
 
     def to_data(self):
         return {
-            'method': self.method,
-            'message': self.message.to_data()
+            'method': self.message.get_method(),
+            'message': self.message.get_data()
         }
 
 
