@@ -1,10 +1,11 @@
 import dateutil.parser
 import datetime
 
-from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction
+from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, TelegramBrick, \
+    TelegramGeneralAction, TelegramBrickAction
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
     ImageAttachment, UrlButton, ButtonTemplate
-
+import blueforge.apis.telegram as tg
 
 WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
 SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
@@ -99,7 +100,7 @@ class Hackathon(object):
                                                   ]),
                                           Element(image_url=WORK_IMAGE_URL,
                                                   title='문의',
-                                                  subtitle='%s에 대해 궁금하신점을 말씀해주세요' % hackathon_name,
+                                                  subtitle='%s에 대해 궁금하신점을 말씀해주세요.' % hackathon_name,
                                                   buttons=[
                                                       PostBackButton(title='문의하기', payload='CONTACT')
                                                   ]),
@@ -232,7 +233,7 @@ class Hackathon(object):
 
         now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
         for idx, content in enumerate(self.data['contents']['main-meeting']):
-            if (idx+1) == len(self.data['contents']['main-meeting']):
+            if (idx + 1) == len(self.data['contents']['main-meeting']):
                 schedule_action.append(
                     FacebookGeneralAction(
                         message=Message(
@@ -431,6 +432,351 @@ class Hackathon(object):
 
     def make_the_bricks_for_telegram(self):
         designer_brick = []
+        hackathon_name = self.data['basic']['name']
+
+        sponsor_text = []
+
+        thanks = self.data['thanks']
+
+        if thanks.get('hoster', False):
+            if thanks['hoster'].strip() != '':
+                sponsor_text.append('*주최*\n%s' % thanks['hoster'])
+
+        if thanks.get('organizer', False):
+            if thanks['organizer'].strip() != '':
+                sponsor_text.append('*주관*\n%s' % thanks['organizer'])
+
+        if thanks.get('sponsor', False):
+            if thanks['sponsor'].strip() != '':
+                sponsor_text.append('*협찬*\n%s' % thanks['sponsor'])
+
+        schedule_text = '*%s의 진행 일정정보에요.*\n' % hackathon_name
+        schedule_text += '\n*참가 신청 일정*\n%s ~ %s' % (self.data['date']['application_period']['start'],
+                                                    self.data['date']['application_period']['end'])
+
+        if self.data['contents'].get('pre-meeting', False):
+            schedule_text += '\n\n*사전일정*\n%s\n사전일정 내용\n%s' % (self.data['date']['pre-meeting'],
+                                                              self.data['contents']['pre-meeting'])
+
+        now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
+        for idx, content in enumerate(self.data['contents']['main-meeting']):
+            schedule_text += '\n\n*본행사 %d년 %d월 %d일*\n%s' % (now_date.year, now_date.month, now_date.day, content)
+            now_date = now_date + datetime.timedelta(days=1)
+
+        place_text = ''
+
+        if self.data['place'].get('pre-meeting', False):
+            place_text += '*[사전행사 장소]*\n{name}\n{address}\n[지도보기]({url})\n\n'.format(
+                **self.data['place']['main-meeting'])
+
+        if self.data['place'].get('main-meeting', False):
+            place_text += '*[본행사 장소]*\n{name}\n{address}\n[지도보기]({url})'.format(
+                **self.data['place']['main-meeting'])
+
+        sc_pl_mark_up = [
+            [
+                tg.CallbackButton(
+                    text='< 뒤로가기',
+                    callback_data='EDIT|start|0'
+                ),
+                tg.CallbackButton(
+                    text='일정보기',
+                    callback_data='EDIT|start|4'
+                ),
+                tg.CallbackButton(
+                    text='장소보기',
+                    callback_data='EDIT|start|5'
+                )
+            ],
+            [
+                tg.UrlButton(
+                    text='참가신청',
+                    url=self.data['application']['url']
+                )
+            ]
+        ]
+
+        prize_text = '*시상*\n======================\n'
+        for prize in self.data['prize']:
+            prize_text += '{name} / {desc} / {benefit}\n'.format(**prize)
+
+
+        # get_started (1, 2) - 참가 신청 날짜 일 때,
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='bot_command',
+                value='start',
+                condition=[
+                    {
+                        'type': 'date_between',
+                        'data': {
+                            'start_date': self.data['date']['application_period']['start'],
+                            'end_data': self.data['date']['application_period']['end']
+                        }
+                    }
+                ],
+                actions=[
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text=self.data['custom_settings']['get_started']
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.SendPhoto(
+                            photo=self.data['basic']['poster_image']
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text='%s에 대한 안내 정보입니다.' % hackathon_name,
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='일정 및 장소안내',
+                                            callback_data='EDIT|start|4'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가요건',
+                                            callback_data='EDIT|start|6'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='시상 및 참가혜택',
+                                            callback_data='EDIT|start|7'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='%s 안내' % hackathon_name,
+                                            callback_data='EDIT|start|0'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가신청 안내',
+                                            callback_data='EDIT|start|1'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='문의',
+                                            callback_data='EDIT|start|2'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='주최/주관/후원 정보',
+                                            callback_data='EDIT|start|3'
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    )
+                ],
+                edits=[
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text='%s에 대한 안내 정보입니다.' % hackathon_name,
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='일정 및 장소안내',
+                                            callback_data='EDIT|start|4'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가요건',
+                                            callback_data='EDIT|start|7'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='시상 및 참가혜택',
+                                            callback_data='EDIT|start|6'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='%s 안내' % hackathon_name,
+                                            callback_data='EDIT|start|0'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가신청 안내',
+                                            callback_data='EDIT|start|1'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='문의',
+                                            callback_data='EDIT|start|2'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='주최/주관/후원 정보',
+                                            callback_data='EDIT|start|3'
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text='*참가신청*\n우리 함께 %s에 참가해요.' % hackathon_name,
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.UrlButton(
+                                            text='참가 신청하기',
+                                            url=self.data['application']['url']
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='%s 안내' % hackathon_name,
+                                            callback_data='EDIT|start|0'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가신청 안내',
+                                            callback_data='EDIT|start|1'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='문의',
+                                            callback_data='EDIT|start|2'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='주최/주관/후원 정보',
+                                            callback_data='EDIT|start|3'
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text='*문의*\n문의사항은 아래의 메일 / 전화를 이용해주세요.\n{email}\n{tel}'.format(**self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='%s 안내' % hackathon_name,
+                                            callback_data='EDIT|start|0'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가신청 안내',
+                                            callback_data='EDIT|start|1'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='문의',
+                                            callback_data='EDIT|start|2'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='주최/주관/후원 정보',
+                                            callback_data='EDIT|start|3'
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text='*주최/주관/후원 정보*\n%s' % '\n\n'.join(sponsor_text),
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='%s 안내' % hackathon_name,
+                                            callback_data='EDIT|start|0'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='참가신청 안내',
+                                            callback_data='EDIT|start|1'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='문의',
+                                            callback_data='EDIT|start|2'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='주최/주관/후원 정보',
+                                            callback_data='EDIT|start|3'
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=schedule_text,
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=sc_pl_mark_up
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=place_text,
+                            disable_web_page_preview=True,
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=sc_pl_mark_up
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=prize_text,
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='< 뒤로가기',
+                                            callback_data='EDIT|start|0'
+                                        )
+                                    ],
+                                    [
+                                        tg.UrlButton(
+                                            text='참가신청',
+                                            url=self.data['application']['url']
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=self.data['application']['requirements'],
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='< 뒤로가기',
+                                            callback_data='EDIT|start|0'
+                                        )
+                                    ],
+                                    [
+                                        tg.UrlButton(
+                                            text='참가신청',
+                                            url=self.data['application']['url']
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    )
+                ]
+            )
+        )
 
         return designer_brick
 

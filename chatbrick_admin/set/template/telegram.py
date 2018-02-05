@@ -13,11 +13,12 @@ class Telegram(object):
 
 
 class TelegramBrick(object):
-    def __init__(self, brick_type, value, actions, edits=None):
+    def __init__(self, brick_type, value, actions, edits=None, condition=None):
         self.brick_type = brick_type
         self.value = value
         self.actions = actions
         self.edits = edits
+        self.condition = condition
 
     def to_data(self):
         data = {
@@ -28,6 +29,9 @@ class TelegramBrick(object):
 
         if self.edits:
             data['edits'] = [action.to_data() for action in self.edits]
+
+        if self.condition:
+            data['conditions'] = self.condition
 
         return data
 
@@ -44,10 +48,9 @@ class TelegramGeneralAction(object):
 
 
 class TelegramBrickAction(object):
-    def __init__(self, brick_id, input=None, data=None):
+    def __init__(self, brick_id, data=None):
         self.id = brick_id
         self.data = data
-        self.input = input
 
     def to_data(self):
         data = {
@@ -56,9 +59,6 @@ class TelegramBrickAction(object):
 
         if self.data:
             data['data'] = self.data
-
-        if self.input:
-            data['input'] = self.input
 
         return {
             'brick': data

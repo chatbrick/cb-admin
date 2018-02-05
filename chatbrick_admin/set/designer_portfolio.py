@@ -1,10 +1,11 @@
+import blueforge.apis.telegram as tg
 import requests
-from bs4 import BeautifulSoup
-from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction, \
-    TelegramBrick, TelegramGeneralAction
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
     ImageAttachment, UrlButton
-import blueforge.apis.telegram as tg
+from bs4 import BeautifulSoup
+
+from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction, \
+    TelegramBrick, TelegramGeneralAction, TelegramBrickAction
 
 WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
 SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
@@ -52,6 +53,29 @@ class DesignerPortfolio(object):
         self.fb_id = fb_id
         self.req = req
         self.data = req['data']
+        self.result_data = []
+
+    def crawl_user_data(self, urls):
+        if len(self.result_data):
+            return self.result_data
+        else:
+            for portfolio in urls:
+                res = requests.get(portfolio,
+                                   headers={
+                                       'User-Agent': 'TelegramBot (like TwitterBot)',
+                                       'Accept': 'text/html'
+                                   })
+
+                soup = BeautifulSoup(res.text, 'lxml')
+                rslt = {
+                    'title': soup.find('meta', {'property': 'og:title'}).get('content'),
+                    'sub_title': soup.find('meta', {'property': 'og:description'}).get('content'),
+                    'image_url': soup.find('meta', {'property': 'og:image'}).get('content'),
+                    'url': portfolio
+                }
+                self.result_data.append(rslt)
+            return self.result_data
+
 
     def make_the_bricks_for_facebook(self):
         designer_brick = []
@@ -201,20 +225,12 @@ class DesignerPortfolio(object):
         if self.data.get('portfolio', False) and self.data['portfolio']:
             temp_element = []
 
-            for portfolio in self.data['portfolio'][:10]:
-                res = requests.get(portfolio,
-                                   headers={
-                                       'User-Agent': 'TelegramBot (like TwitterBot)',
-                                       'Accept': 'text/html'
-                                   })
-
-                soup = BeautifulSoup(res.text, 'lxml')
-
-                temp_element.append(Element(title=soup.find('meta', {'property': 'og:title'}).get('content'),
-                                            subtitle=soup.find('meta', {'property': 'og:description'}).get('content'),
-                                            image_url=soup.find('meta', {'property': 'og:image'}).get('content'),
+            for portfolio in self.crawl_user_data(self.data['portfolio'][:10]):
+                temp_element.append(Element(title=portfolio['title'],
+                                            subtitle=portfolio['sub_title'],
+                                            image_url=portfolio['image_url'],
                                             buttons=[
-                                                UrlButton(title='View', url=portfolio)
+                                                UrlButton(title='View', url=portfolio['url'])
                                             ]
                                             ))
 
@@ -417,18 +433,10 @@ class DesignerPortfolio(object):
         )
         if self.data.get('portfolio', False) and self.data['portfolio']:
             temp_element = []
-
-            for idx, portfolio in enumerate(self.data['portfolio'][:10]):
-                res = requests.get(portfolio,
-                                   headers={
-                                       'User-Agent': 'TelegramBot (like TwitterBot)',
-                                       'Accept': 'text/html'
-                                   })
-
-                soup = BeautifulSoup(res.text, 'lxml')
+            for idx, portfolio in enumerate(self.crawl_user_data(self.data['portfolio'][:10])):
                 temp_element.append(
                     tg.CallbackButton(
-                        text=soup.find('meta', {'property': 'og:title'}).get('content'),
+                        text=portfolio['title'],
                         callback_data='VIEW_PORTFOLIO_%d' % idx
                     )
                 )
@@ -440,20 +448,20 @@ class DesignerPortfolio(object):
                         actions=[
                             TelegramGeneralAction(
                                 message=tg.SendPhoto(
-                                    photo=soup.find('meta', {'property': 'og:image'}).get('content')
+                                    photo=portfolio['image_url']
                                 )
                             ),
                             TelegramGeneralAction(
                                 message=tg.SendMessage(
-                                    text='*%s*\n%s' % (soup.find('meta', {'property': 'og:title'}).get('content'),
-                                                       soup.find('meta', {'property': 'og:description'}).get('content')),
+                                    text='*%s*\n%s' % (portfolio['title'],
+                                                       portfolio['sub_title']),
                                     parse_mode='Markdown',
                                     reply_markup=tg.MarkUpContainer(
                                         inline_keyboard=[
                                             [
                                                 tg.UrlButton(
                                                     text='View',
-                                                    url=portfolio
+                                                    url=portfolio['url']
                                                 )
                                             ]
                                         ]
@@ -537,6 +545,96 @@ class DesignerPortfolio(object):
                     ]
                 )
             )
+        if self.data['basic'].get('email', False):
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='callback',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='자세한 문의는 아래의 메일보내기 버튼을 이용해주세요.',
+                                parse_mode='Markdown',
+                                reply_markup=tg.MarkUpContainer(
+                                    inline_keyboard=[
+                                        [
+                                            tg.CallbackButton(
+                                                text='Send E-Mail',
+                                                callback_data='send_email'
+                                            )
+                                        ]
+                                    ]
+                                )
+                            )
+                        )
+                    ]
+                )
+            )
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='bot_command',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='자세한 문의는 아래의 메일보내기 버튼을 이용해주세요.',
+                                parse_mode='Markdown',
+                                reply_markup=tg.MarkUpContainer(
+                                    inline_keyboard=[
+                                        [
+                                            tg.CallbackButton(
+                                                text='Send E-Mail',
+                                                callback_data='send_email'
+                                            )
+                                        ]
+                                    ]
+                                )
+                            )
+                        )
+                    ]
+                )
+            )
+        else:
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='callback',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='이메일이 입력되어 있지 않습니다.',
+                                parse_mode='Markdown'
+                            )
+                        )
+                    ]
+                )
+            )
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='bot_command',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='이메일이 입력되어 있지 않습니다.',
+                                parse_mode='Markdown'
+                            )
+                        )
+                    ]
+                )
+            )
+
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='bot_command',
+                value='send_email',
+                actions=[
+                    TelegramBrickAction(
+                        brick_id='mailer'
+                    )
+                ]
+            )
+        )
 
         return designer_brick
 

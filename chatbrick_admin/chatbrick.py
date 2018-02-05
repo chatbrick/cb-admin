@@ -171,6 +171,15 @@ def create_set():
                 rslt = mongo3.db.facebook.insert_one(res)
             elif request.method == 'PATCH':
                 if 'id' in req:
+                    prv_set = mongo3.db.facebook.find_one({'id': req['id']})
+                    res['telegram']['token'] = prv_set['telegram']['token']
+
+                    if prv_set.get('access_token', False):
+                        res['access_token'] = prv_set['access_token']
+
+                    if prv_set.get('page_id', False):
+                        res['page_id'] = prv_set['page_id']
+
                     rslt = mongo3.db.facebook.update_one({'id': req['id']}, {'$set': res}, upsert=False)
                     return {
                         'success': True,
@@ -202,6 +211,14 @@ def create_set():
 def select_and_delete_set(brick_id):
     if request.method == 'GET':
         result = mongo3.db.facebook.find_one({'id': brick_id}, {'persistent_menu': False, 'bricks': False})
+        if result['type'] == 'bricks':
+            if result['settings']['data'].get('brick', False):
+                if len(result['settings']['data']['brick']):
+                    for idx, registerd_brick in enumerate(result['settings']['data']['brick']):
+                        brick_result = mongo3.db.brick.find_one({'id': registerd_brick['id']},
+                                                             {'preview': True, 'thumb': True, 'api': True})
+                        result['settings']['data']['brick'][idx].update(brick_result)
+
         if result:
             return {
                 'success': True,
