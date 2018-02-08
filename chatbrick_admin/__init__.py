@@ -15,4 +15,4 @@ app.config['MONGO_PASSWORD'] = os.environ['DB_CHATBRICK_USER_PASSWORD']
 app.config['UPLOAD_FOLDER'] = '/home/ec2-user/app/chatbrick_admin/src/static'
 
 mongo3 = PyMongo(app)
-from chatbrick_admin.chatbrick import *
+from .service import *

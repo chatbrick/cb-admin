@@ -56,7 +56,7 @@ class Bricks(object):
         self.req = req
         self.data = req['data']
         self.bricks = []
-
+        self.brick_data = {}
         if bricks:
             for brick in bricks:
                 self.bricks.append(brick)
@@ -66,6 +66,7 @@ class Bricks(object):
         elements = []
 
         for brick in self.data['brick']:
+            self.brick_data[brick['id']] = brick['data']
             designer_brick.append(
                 FacebookBrick(
                     brick_type='postback',
@@ -132,8 +133,8 @@ class Bricks(object):
         designer_brick = []
         temp_element = []
         description = []
-
         for brick in self.data['brick']:
+            self.brick_data[brick['id']] = brick['data']
             designer_brick.append(
                 TelegramBrick(
                     brick_type='callback',
@@ -207,4 +208,5 @@ class Bricks(object):
     def to_data(self):
         return Container(name=self.req['name'], desc=self.req['desc'], persistent_menu=PERSISTENT_MENU,
                          bricks=self.make_the_bricks_for_facebook(), telegram=self.make_the_bricks_for_telegram(),
-                         user_id=self.fb_id, type='bricks', id=self.req.get('id', None)).to_data()
+                         user_id=self.fb_id, type='bricks', brick_data=self.brick_data,
+                         id=self.req.get('id', None)).to_data()

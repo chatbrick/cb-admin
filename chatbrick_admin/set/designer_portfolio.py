@@ -76,7 +76,6 @@ class DesignerPortfolio(object):
                 self.result_data.append(rslt)
             return self.result_data
 
-
     def make_the_bricks_for_facebook(self):
         designer_brick = []
         # get_started (1.1, 1.2)
@@ -448,26 +447,56 @@ class DesignerPortfolio(object):
                         actions=[
                             TelegramGeneralAction(
                                 message=tg.SendPhoto(
-                                    photo=portfolio['image_url']
-                                )
-                            ),
-                            TelegramGeneralAction(
-                                message=tg.SendMessage(
-                                    text='*%s*\n%s' % (portfolio['title'],
-                                                       portfolio['sub_title']),
-                                    parse_mode='Markdown',
+                                    photo=portfolio['image_url'],
+                                    caption='*%s*\n%s' % (portfolio['title'],
+                                                          portfolio['sub_title']),
                                     reply_markup=tg.MarkUpContainer(
                                         inline_keyboard=[
                                             [
-                                                tg.UrlButton(
-                                                    text='View',
-                                                    url=portfolio['url']
+
+                                                    tg.UrlButton(
+                                                        text='View',
+                                                        url=portfolio['url']
+                                                    )
+
+                                            ],
+                                            [
+                                                tg.CallbackButton(
+                                                    text='Prev',
+                                                    callback_data='VIEW_PORTFOLIO_%d' % (idx - 1)
+                                                ),
+                                                tg.CallbackButton(
+                                                    text='Next',
+                                                    callback_data='VIEW_PORTFOLIO_%d' % (idx+1)
                                                 )
                                             ]
+
                                         ]
                                     )
                                 )
                             )
+                            # TelegramGeneralAction(
+                            #     message=tg.SendPhoto(
+                            #         photo=portfolio['image_url']
+                            #     )
+                            # ),
+                            # TelegramGeneralAction(
+                            #     message=tg.SendMessage(
+                            #         text='*%s*\n%s' % (portfolio['title'],
+                            #                            portfolio['sub_title']),
+                            #         parse_mode='Markdown',
+                            #         reply_markup=tg.MarkUpContainer(
+                            #             inline_keyboard=[
+                            #                 [
+                            #                     tg.UrlButton(
+                            #                         text='View',
+                            #                         url=portfolio['url']
+                            #                     )
+                            #                 ]
+                            #             ]
+                            #         )
+                            #     )
+                            # )
                         ]
                     )
                 )

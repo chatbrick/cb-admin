@@ -35,5 +35,8 @@ class Container(object):
         if 'bricks' in self.data:
             data['bricks'] = [brick.to_data() for brick in self.data['bricks']]
 
+        if 'brick_data' in self.data:
+            data['brick_data'] = self.data['brick_data']
+
         return data
 
