@@ -36,11 +36,11 @@ def cursor_to_dict(datas):
 
 def get_facebook_account():
     return {
-        'fb_id': session['fb_id'],
-        'fb_profile': session['fb_profile'],
-        'fb_name': session['fb_name'],
-        'fb_access_token': session['fb_access_token'],
-        'fb_signed_request': session['fb_signed_request']
+        'fb_id': session.get('fb_id', None),
+        'fb_profile': session.get('fb_profile', None),
+        'fb_name': session.get('fb_name', None),
+        'fb_access_token': session.get('fb_access_token', None),
+        'fb_client_access_token': session.get('fb_client_access_token', None)
     }
 
 

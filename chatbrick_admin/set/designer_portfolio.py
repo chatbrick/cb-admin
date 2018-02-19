@@ -55,27 +55,6 @@ class DesignerPortfolio(object):
         self.data = req['data']
         self.result_data = []
 
-    def crawl_user_data(self, urls):
-        if len(self.result_data):
-            return self.result_data
-        else:
-            for portfolio in urls:
-                res = requests.get(portfolio,
-                                   headers={
-                                       'User-Agent': 'TelegramBot (like TwitterBot)',
-                                       'Accept': 'text/html'
-                                   })
-
-                soup = BeautifulSoup(res.text, 'lxml')
-                rslt = {
-                    'title': soup.find('meta', {'property': 'og:title'}).get('content'),
-                    'sub_title': soup.find('meta', {'property': 'og:description'}).get('content'),
-                    'image_url': soup.find('meta', {'property': 'og:image'}).get('content'),
-                    'url': portfolio
-                }
-                self.result_data.append(rslt)
-            return self.result_data
-
     def make_the_bricks_for_facebook(self):
         designer_brick = []
         # get_started (1.1, 1.2)
@@ -131,7 +110,7 @@ class DesignerPortfolio(object):
         ]))
 
         # Work / 2.1.1
-        if len(self.data['work']):
+        if self.data.get('work', False) and len(self.data['work']):
             work_element = [
                 Element(title='Work',
                         subtitle='%s님의 경력 사항입니다.' % self.data['basic']['name'],
@@ -156,7 +135,7 @@ class DesignerPortfolio(object):
             ]))
 
         # Specialties / 2.1.2
-        if len(self.data['specialties']):
+        if self.data.get('specialties', False) and len(self.data['specialties']):
             special_element = [
                 Element(title='Specialties',
                         subtitle='%s님의 보유기술 및 능력입니다.' % self.data['basic']['name'],
@@ -224,7 +203,7 @@ class DesignerPortfolio(object):
         if self.data.get('portfolio', False) and self.data['portfolio']:
             temp_element = []
 
-            for portfolio in self.crawl_user_data(self.data['portfolio'][:10]):
+            for portfolio in self.data['portfolio'][:10]:
                 temp_element.append(Element(title=portfolio['title'],
                                             subtitle=portfolio['sub_title'],
                                             image_url=portfolio['image_url'],
@@ -432,7 +411,7 @@ class DesignerPortfolio(object):
         )
         if self.data.get('portfolio', False) and self.data['portfolio']:
             temp_element = []
-            for idx, portfolio in enumerate(self.crawl_user_data(self.data['portfolio'][:10])):
+            for idx, portfolio in enumerate(self.data['portfolio'][:10]):
                 temp_element.append(
                     tg.CallbackButton(
                         text=portfolio['title'],

@@ -114,6 +114,7 @@ class Bricks(object):
                 brick_type='postback',
                 value='get_started',
                 actions=[
+                    FacebookGeneralAction(message=Message(text=self.data['custom_settings']['get_started'])),
                     FacebookGeneralAction(
                         message=Message(
                             attachment=TemplateAttachment(
@@ -177,20 +178,30 @@ class Bricks(object):
         temp_idx = 0
         temp_len = len(temp_element)
         temp_array = []
-        for i in range(0, round(temp_len / 2)):
-            temp_sub_array = []
-            for a in range(0, 2):
-                if temp_idx == temp_len:
-                    break
-                temp_sub_array.append(temp_element[temp_idx])
-                temp_idx += 1
-            temp_array.append(temp_sub_array)
+        if len(temp_element) == 1:
+            temp_array.append([
+                temp_element[0]
+            ])
+        else:
+            for i in range(0, round(temp_len / 2)):
+                temp_sub_array = []
+                for a in range(0, 2):
+                    if temp_idx == temp_len:
+                        break
+                    temp_sub_array.append(temp_element[temp_idx])
+                    temp_idx += 1
+                temp_array.append(temp_sub_array)
 
         designer_brick.append(
             TelegramBrick(
                 brick_type='bot_command',
                 value='start',
                 actions=[
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text=self.data['custom_settings']['get_started']
+                        )
+                    ),
                     TelegramGeneralAction(
                         message=tg.SendMessage(
                             text='*원하는 브릭을 선택해주세요.*\n%s' % '\n'.join(description),

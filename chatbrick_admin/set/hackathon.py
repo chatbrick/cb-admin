@@ -2,9 +2,9 @@ import dateutil.parser
 import datetime
 
 from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, TelegramBrick, \
-    TelegramGeneralAction, TelegramBrickAction
+    TelegramGeneralAction, TelegramBrickAction, FacebookBrickAction
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
-    ImageAttachment, UrlButton, ButtonTemplate
+    ImageAttachment, UrlButton, ButtonTemplate, PhoneNumberButton
 import blueforge.apis.telegram as tg
 
 WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
@@ -378,6 +378,25 @@ class Hackathon(object):
         )
 
         # 문의하기 / 10
+        contact_button = []
+
+        if self.data['basic'].get('tel', False) and self.data['basic']['tel'].strip() != '':
+            phone_number = self.data['basic']['tel'].replace('-', '')
+            if not phone_number.startswith('+'):
+                phone_number = '+82' + phone_number[1:]
+
+            contact_button.append(
+                PhoneNumberButton(
+                    title='전화로 문의하기',
+                    payload=phone_number
+                )
+            )
+
+        contact_button.append(PostBackButton(
+            title='메일로 문의하기',
+            payload='SEND_EMAIL'
+        ))
+
         designer_brick.append(
             FacebookBrick(
                 brick_type='postback',
@@ -385,14 +404,49 @@ class Hackathon(object):
                 actions=[
                     FacebookGeneralAction(
                         message=Message(
-                            text='문의사항은 아래의 메일 / 전화를 이용해주세요.\n{email}\n{tel}'.format(**self.data['basic'])
+                            attachment=TemplateAttachment(
+                                payload=ButtonTemplate(
+                                    text='문의사항은 아래의 메일 / 전화를 이용해주세요.',
+                                    buttons=contact_button
+                                )
+                            )
                         )
                     )
                 ]
             )
         )
 
-        # 주최/주관/후원정보 / 11
+        # 메일로 문의하기
+        if self.data['basic'].get('email', False) and self.data['basic']['email'].strip() != '':
+            designer_brick.append(
+                FacebookBrick(
+                    brick_type='postback',
+                    value='SEND_EMAIL',
+                    actions=[
+                        FacebookBrickAction(
+                            brick_id='mailer',
+                            data={
+                                'receiver': self.data['basic']['email']
+                            }
+                        )
+                    ]
+                )
+            )
+        else:
+            designer_brick.append(
+                FacebookBrick(
+                    brick_type='postback',
+                    value='SEND_EMAIL',
+                    actions=[
+                        FacebookGeneralAction(
+                            message=Message(
+                                text='E-Mail 항목을 입력되지 않았습니다.'
+                            )
+                        )
+                    ]
+                )
+            )
+
         sponsor_text = []
 
         thanks = self.data['thanks']
@@ -499,7 +553,6 @@ class Hackathon(object):
         prize_text = '*시상*\n======================\n'
         for prize in self.data['prize']:
             prize_text += '{name} / {desc} / {benefit}\n'.format(**prize)
-
 
         # get_started (1, 2) - 참가 신청 날짜 일 때,
         designer_brick.append(
