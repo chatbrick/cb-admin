@@ -7,10 +7,11 @@ from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, E
     ImageAttachment, UrlButton, ButtonTemplate, PhoneNumberButton
 import blueforge.apis.telegram as tg
 
-WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
-SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
-SUMMARY_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_summary.png'
-CONTACT_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_contact.png'
+APPLY_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_apply.png'
+LOCATE_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_locate.png'
+DATE_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_date.png'
+CONTACT_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_contact.png'
+SPONSOR_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_sponsor.png'
 PERSISTENT_MENU = [
     {
         "whitelisted_domains": [
@@ -93,18 +94,18 @@ class Hackathon(object):
                                                                      payload='VIEW_PRIZE_AND_BENEFIT')
                                                   ]),
                                           Element(title='%s 참가신청' % hackathon_name,
-                                                  image_url=WORK_IMAGE_URL,
+                                                  image_url=APPLY_IMAGE_URL,
                                                   subtitle='우리 함께 %s에 참가해요.' % hackathon_name,
                                                   buttons=[
                                                       UrlButton(title='참가 신청하기', url=self.data['application']['url'])
                                                   ]),
-                                          Element(image_url=WORK_IMAGE_URL,
+                                          Element(image_url=CONTACT_IMAGE_URL,
                                                   title='문의',
                                                   subtitle='%s에 대해 궁금하신점을 말씀해주세요.' % hackathon_name,
                                                   buttons=[
                                                       PostBackButton(title='문의하기', payload='CONTACT')
                                                   ]),
-                                          Element(image_url=WORK_IMAGE_URL,
+                                          Element(image_url=SPONSOR_IMAGE_URL,
                                                   title='주최/주관/후원 정보',
                                                   subtitle='%s의 주최/주관/후원 정보에요.' % hackathon_name,
                                                   buttons=[
@@ -146,16 +147,16 @@ class Hackathon(object):
                                                                      payload='VIEW_PRIZE_AND_BENEFIT')
                                                   ]),
                                           Element(title='%s 참가신청' % hackathon_name,
-                                                  image_url=WORK_IMAGE_URL,
+                                                  image_url=APPLY_IMAGE_URL,
                                                   subtitle='우리 함께 %s에 참가해요.' % hackathon_name
                                                   ),
-                                          Element(image_url=WORK_IMAGE_URL,
+                                          Element(image_url=CONTACT_IMAGE_URL,
                                                   title='문의',
                                                   subtitle='%s에 대해 궁금하신점을 말씀해주세요' % hackathon_name,
                                                   buttons=[
                                                       PostBackButton(title='문의하기', payload='CONTACT')
                                                   ]),
-                                          Element(image_url=WORK_IMAGE_URL,
+                                          Element(image_url=SPONSOR_IMAGE_URL,
                                                   title='주최/주관/후원 정보',
                                                   subtitle='%s의 주최/주관/후원 정보에요.' % hackathon_name,
                                                   buttons=[
@@ -174,7 +175,7 @@ class Hackathon(object):
         ]
 
         if self.data['place'].get('pre-meeting', False):
-            place_button.insert(0, PostBackButton(title='사전일정 장소보기',
+            place_button.insert(0, PostBackButton(title='사전모임 일정 장소보기',
                                                   payload='VIEW_PLACE_OF_PRE_MEETING'))
 
         designer_brick.append(
@@ -187,14 +188,14 @@ class Hackathon(object):
                             attachment=TemplateAttachment(
                                 payload=GenericTemplate(
                                     elements=[
-                                        Element(image_url=WORK_IMAGE_URL,
+                                        Element(image_url=DATE_IMAGE_URL,
                                                 title='%s의 진행 일정정보에요.' % hackathon_name,
                                                 buttons=[
                                                     # 4
                                                     PostBackButton(title='일정보기',
                                                                    payload='VIEW_SCHEDULE')
                                                 ]),
-                                        Element(image_url=WORK_IMAGE_URL,
+                                        Element(image_url=LOCATE_IMAGE_URL,
                                                 title='%s이 진행되는 장소에요.' % hackathon_name,
                                                 buttons=place_button)
                                     ]
@@ -223,14 +224,6 @@ class Hackathon(object):
             )
         ]
 
-        if self.data['contents'].get('pre-meeting', False):
-            schedule_action.insert(1, FacebookGeneralAction(
-                message=Message(
-                    text='사전일정\n:%s\n사전일정 내용\n:%s' % (self.data['date']['pre-meeting'],
-                                                      self.data['contents']['pre-meeting'])
-                )
-            ))
-
         now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
         for idx, content in enumerate(self.data['contents']['main-meeting']):
             if (idx + 1) == len(self.data['contents']['main-meeting']):
@@ -258,6 +251,14 @@ class Hackathon(object):
                 )
 
             now_date = now_date + datetime.timedelta(days=1)
+
+        if self.data['contents'].get('pre-meeting', False):
+            schedule_action.insert(1, FacebookGeneralAction(
+                message=Message(
+                    text='사전모임 일정\n:%s\n사전모임 일정 내용\n:%s' % (self.data['date']['pre-meeting'],
+                                                      self.data['contents']['pre-meeting'])
+                )
+            ))
 
         designer_brick.append(
             FacebookBrick(
@@ -470,7 +471,7 @@ class Hackathon(object):
                 actions=[
                     FacebookGeneralAction(
                         message=Message(
-                            attachment=ImageAttachment(url=WORK_IMAGE_URL)
+                            attachment=ImageAttachment(url=SPONSOR_IMAGE_URL)
                         )
                     ),
                     FacebookGeneralAction(
@@ -508,15 +509,14 @@ class Hackathon(object):
         schedule_text += '\n*참가 신청 일정*\n%s ~ %s' % (self.data['date']['application_period']['start'],
                                                     self.data['date']['application_period']['end'])
 
-        if self.data['contents'].get('pre-meeting', False):
-            schedule_text += '\n\n*사전일정*\n%s\n사전일정 내용\n%s' % (self.data['date']['pre-meeting'],
-                                                              self.data['contents']['pre-meeting'])
-
         now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
         for idx, content in enumerate(self.data['contents']['main-meeting']):
             schedule_text += '\n\n*본행사 %d년 %d월 %d일*\n%s' % (now_date.year, now_date.month, now_date.day, content)
             now_date = now_date + datetime.timedelta(days=1)
 
+        if self.data['contents'].get('pre-meeting', False):
+            schedule_text += '\n\n*사전모임 일정*\n%s\n사전모임 일정 내용\n%s' % (self.data['date']['pre-meeting'],
+                                                              self.data['contents']['pre-meeting'])
         place_text = ''
 
         if self.data['place'].get('pre-meeting', False):

@@ -26,22 +26,36 @@ def upload_file_to_server():
         if 'file' not in request.files:
             return {
                 'success': False,
-                'msg': '파일이 존재하지 않습니다.'
+                'msg': '파일이 존재하지 않아요.'
             }
         file = request.files['file']
         if file.filename == '':
             return {
                 'success': False,
-                'msg': '선택된 파일이 없습니다.'
+                'msg': '선택된 파일이 없어요.'
             }
+
         if file and allowed_file(file.filename):
-            filename = '%s_%s' % (str(uuid.uuid4()), secure_filename(file.filename))
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return {
-                'success': True,
-                'data': {
-                    'url': '%s://www.chatbrick.io%s' % (request.scheme, url_for('uploaded_file', filename=filename))
+            try:
+                filename = '%s_%s' % (str(uuid.uuid4()), secure_filename(file.filename))
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                return {
+                    'success': True,
+                    'data': {
+                        'url': '%s://www.chatbrick.io%s' % (request.scheme, url_for('uploaded_file', filename=filename))
+                    }
                 }
+            except Exception as ex:
+                return {
+                    'success': False,
+                    'action': 'ERR0002',
+                    'msg': '에러가 발생했어요.\n잠시 후 다시 시도해주세요.\n에러 내용: %s' % str(ex)
+                }
+        else:
+            return {
+                'success': False,
+                'action': 'ERR0002',
+                'msg': '업로드할 수 있는 확장자가 아닙에요.\npng, jpg, jpeg, gif 중 하나를 선택하여 업로드 해주세요.'
             }
 
 
@@ -83,13 +97,13 @@ def get_metas():
             return {
                 'success': True,
                 'data': res_data
-                }
+            }
         except Exception as ex:
             logger.error(ex)
     return {
         'success': False,
         'action': 'ERR0002',
-        'msg': '정상 URL이 아닙니다.'
+        'msg': '메타 데이터 가져오기가 실패했습니다.'
     }
 
 
@@ -107,6 +121,9 @@ def save_log_to_server():
     elapsed_time = request.form.get('elapsed', '')
     fb_id = get_facebook_account().get('fb_id', '')
     remark = request.form.get('remark', '')
+
+    if fb_id is None or fb_id.strip() == '':
+        fb_id = request.form.get('fb_id', '')
 
     try:
         data = json.loads(data)
@@ -137,5 +154,12 @@ def save_log_to_server():
     }
 
 
-
-
+@app.route('/api/log/error/', methods=['POST'])
+@as_json
+def save_error_msg():
+    req = request.get_json()
+    rslt = mongo3.db.brick_error.insert_one(req)
+    return {
+        'success': True,
+        'result': str(rslt.inserted_id)
+    }

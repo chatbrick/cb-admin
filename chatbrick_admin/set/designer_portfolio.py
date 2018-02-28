@@ -55,8 +55,12 @@ class DesignerPortfolio(object):
         self.data = req['data']
         self.result_data = []
 
+        if self.data['basic'].get('name') is None or self.data['basic']['name'].strip() == '':
+            raise RuntimeError('이름이 입력되지 않았어요.')
+
     def make_the_bricks_for_facebook(self):
         designer_brick = []
+
         # get_started (1.1, 1.2)
         designer_brick.append(FacebookBrick(brick_type='postback', value='get_started', actions=[
             FacebookGeneralAction(message=Message(text=self.data['custom_settings']['get_started'])),
@@ -118,6 +122,9 @@ class DesignerPortfolio(object):
             ]
 
             for work in self.data['work']:
+                if work['name'].strip() == '':
+                    raise RuntimeError('경력의 근무 회사의 이름이 없어요.')
+
                 work_element.append(Element(title=work['name'], subtitle='{period}\n{field}'.format(**work)))
 
             designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_WORK', actions=[
@@ -143,6 +150,12 @@ class DesignerPortfolio(object):
             ]
 
             for special in self.data['specialties']:
+                if special['name'].strip() == '':
+                    raise RuntimeError('보유 기술의 이름이 없어요.')
+
+                if special['detail'].strip() == '':
+                    raise RuntimeError('보유 기술의 설명이 없어요.')
+
                 special_element.append(Element(title=special['name'], subtitle=special['detail']))
 
             designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SPECIALTIES', actions=[
@@ -161,7 +174,7 @@ class DesignerPortfolio(object):
             ]))
 
         # Summary / 2.1.3
-        if self.data['summary']:
+        if self.data.get('summary', False) and self.data['summary'].strip() != '':
             designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SUMMARY', actions=[
                 FacebookGeneralAction(message=Message(
                     attachment=ImageAttachment(url=SUMMARY_IMAGE_URL)
@@ -177,7 +190,7 @@ class DesignerPortfolio(object):
             ]))
 
         # Contact / 4
-        if self.data['basic'].get('email', False):
+        if self.data['basic'].get('email', False) and self.data['basic']['email'].strip() != '':
             designer_brick.append(FacebookBrick(brick_type='postback', value='CONTACT', actions=[
                 FacebookGeneralAction(message=Message(
                     attachment=TemplateAttachment(
@@ -200,7 +213,7 @@ class DesignerPortfolio(object):
                     message=Message(text='%s님이 아직 이메일을 입력하지 않았습니다.' % self.data['basic']['name']))
             ]))
 
-        if self.data.get('portfolio', False) and self.data['portfolio']:
+        if self.data.get('portfolio', False) and len(self.data['portfolio']):
             temp_element = []
 
             for portfolio in self.data['portfolio'][:10]:
@@ -433,10 +446,10 @@ class DesignerPortfolio(object):
                                         inline_keyboard=[
                                             [
 
-                                                    tg.UrlButton(
-                                                        text='View',
-                                                        url=portfolio['url']
-                                                    )
+                                                tg.UrlButton(
+                                                    text='View',
+                                                    url=portfolio['url']
+                                                )
 
                                             ],
                                             [
@@ -446,7 +459,7 @@ class DesignerPortfolio(object):
                                                 ),
                                                 tg.CallbackButton(
                                                     text='Next',
-                                                    callback_data='VIEW_PORTFOLIO_%d' % (idx+1)
+                                                    callback_data='VIEW_PORTFOLIO_%d' % (idx + 1)
                                                 )
                                             ]
 

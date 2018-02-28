@@ -79,19 +79,24 @@ class Bricks(object):
                     ]
                 )
             )
-            for keyword in brick['keywords']:
-                designer_brick.append(
-                    FacebookBrick(
-                        brick_type='text',
-                        value=keyword,
-                        actions=[
-                            FacebookBrickAction(
-                                brick_id=brick['id'],
-                                data=brick['data']
-                            )
-                        ]
+            if 'keywords' in brick:
+                for keyword in brick['keywords']:
+                    if len(keyword) == 0 or len(keyword) > 8:
+                        raise RuntimeError('키워드를 최대 8자 이내로 입력해주세요.')
+
+                    designer_brick.append(
+                        FacebookBrick(
+                            brick_type='text',
+                            value=keyword,
+                            actions=[
+                                FacebookBrickAction(
+                                    brick_id=brick['id'],
+                                    data=brick['data']
+                                )
+                            ]
+                        )
                     )
-                )
+
             for brick_rec in self.bricks:
                 if brick_rec['id'] == brick['id']:
                     elements.append(
@@ -149,19 +154,36 @@ class Bricks(object):
                 )
             )
 
-            for keyword in brick['keywords']:
-                designer_brick.append(
-                    TelegramBrick(
-                        brick_type='bot_command',
-                        value=keyword,
-                        actions=[
-                            TelegramBrickAction(
-                                brick_id=brick['id'],
-                                data=brick['data']
-                            )
-                        ]
-                    )
+            if 'keywords' in brick:
+                for keyword in brick['keywords']:
+                    if len(keyword) == 0 or len(keyword) > 8:
+                        raise RuntimeError('키워드를 최대 8자 이내로 입력해주세요.')
+
+                    designer_brick.append(
+                        TelegramBrick(
+                            brick_type='text',
+                            value=keyword,
+                            actions=[
+                                TelegramBrickAction(
+                                    brick_id=brick['id'],
+                                    data=brick['data']
+                                )
+                            ]
+                        )
                 )
+                # 임시로 제거한다.
+                # designer_brick.append(
+                #     TelegramBrick(
+                #         brick_type='bot_command',
+                #         value=keyword,
+                #         actions=[
+                #             TelegramBrickAction(
+                #                 brick_id=brick['id'],
+                #                 data=brick['data']
+                #             )
+                #         ]
+                #     )
+                # )
 
             for brick_rec in self.bricks:
                 if brick_rec['id'] == brick['id']:

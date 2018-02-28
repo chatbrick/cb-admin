@@ -15,12 +15,24 @@ logger = logging.getLogger(__name__)
 @as_json
 def set_token_to_telegram(brick_id, telegram_token):
     if request.method == 'PUT':
+        count_token = mongo3.db.facebook.find({'telegram.token': telegram_token}).count()
+
+        if count_token:
+            return {
+                'success': False,
+                'action': 'ERR0002',
+                'msg': '이미 등록된 토큰입니다.\n해당 토큰의 사용해제 후 사용해주세요.'
+            }
+
         result = mongo3.db.facebook.update_one({'id': brick_id}, {'$set': {'telegram.token': telegram_token}},
                                                upsert=False)
+
         if result.matched_count:
             result_of_register = requests.post(url='https://api.telegram.org/bot%s/setWebhook' % telegram_token, data={
                 'url': 'https://www.chatbrick.io/webhooks/%s/tg/' % brick_id
             })
+
+            res = requests.get('https://api.telegram.org/bot%s/getMe' % telegram_token)
             return {
                 'success': True,
                 'facebook': get_facebook_account(),
@@ -28,8 +40,15 @@ def set_token_to_telegram(brick_id, telegram_token):
                     'matched_count': result.matched_count,
                     'modified_count': result.modified_count,
                     'telegram': result_of_register.json(),
+                    'bot': res.json().get('result', {}),
                     'published': publish(brick_id)
                 }
+            }
+        else:
+            return {
+                'success': False,
+                'action': 'ERR0002',
+                'msg': '텔레그램 봇 등록 실패했어요.'
             }
     elif request.method == 'DELETE':
         result = mongo3.db.facebook.update_one({'id': brick_id}, {'$set': {'telegram.token': ''}},
@@ -49,7 +68,7 @@ def set_token_to_telegram(brick_id, telegram_token):
     return {
         'success': False,
         'action': 'ERR0002',
-        'msg': '브릭이 존재하지 않습니다.'
+        'msg': '세트가 존재하지 않아요.'
     }
 
 
@@ -73,7 +92,7 @@ def set_token_to_facebook(brick_id, page_id, access_token):
     return {
         'success': False,
         'action': 'ERR0002',
-        'msg': '브릭이 존재하지 않습니다.'
+        'msg': '세트가 존재하지 않아요.'
     }
 
 
@@ -97,7 +116,7 @@ def delete_token_to_facebook(brick_id):
     return {
         'success': False,
         'action': 'ERR0002',
-        'msg': '브릭이 존재하지 않습니다.'
+        'msg': '세트가 존재하지 않습니다.'
     }
 
 
@@ -112,7 +131,7 @@ def get_users_connected_platforms():
                 'data': {
 
                 }
-             }
+            }
 
             result = mongo3.db.facebook.find({
                 'user_id': session['fb_id']
@@ -129,8 +148,9 @@ def get_users_connected_platforms():
             return {
                 'success': False,
                 'action': 'ERR0001',
-                'msg': '로그인 상태가 아닙니다.'
+                'msg': '로그인 상태가 아니에요'
             }
+
 
 @app.route('/api/user/platform/brick/<brick_id>/', methods=['GET'])
 @as_json
@@ -174,5 +194,5 @@ def get_users_connected_platforms_by_id(brick_id):
             return {
                 'success': False,
                 'action': 'ERR0001',
-                'msg': '로그인 상태가 아닙니다.'
+                'msg': '로그인 상태가 아니에요.'
             }
