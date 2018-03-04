@@ -431,6 +431,9 @@ class DesignerPortfolio(object):
                         callback_data='VIEW_PORTFOLIO_%d' % idx
                     )
                 )
+                caption = '*%s*\n%s' % (portfolio['title'], portfolio['sub_title'])
+                if len(caption) > 200:
+                    caption = caption[:196] + '...'
 
                 designer_brick.append(
                     TelegramBrick(
@@ -440,8 +443,8 @@ class DesignerPortfolio(object):
                             TelegramGeneralAction(
                                 message=tg.SendPhoto(
                                     photo=portfolio['image_url'],
-                                    caption='*%s*\n%s' % (portfolio['title'],
-                                                          portfolio['sub_title']),
+                                    caption=caption,
+                                    parse_mode='Markdown',
                                     reply_markup=tg.MarkUpContainer(
                                         inline_keyboard=[
                                             [
@@ -581,7 +584,7 @@ class DesignerPortfolio(object):
                                         [
                                             tg.CallbackButton(
                                                 text='Send E-Mail',
-                                                callback_data='send_email'
+                                                callback_data='BRICK|mailer|get_started'
                                             )
                                         ]
                                     ]
@@ -605,7 +608,7 @@ class DesignerPortfolio(object):
                                         [
                                             tg.CallbackButton(
                                                 text='Send E-Mail',
-                                                callback_data='send_email'
+                                                callback_data='BRICK|mailer|get_started'
                                             )
                                         ]
                                     ]

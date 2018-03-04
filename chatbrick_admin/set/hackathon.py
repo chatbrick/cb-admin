@@ -224,6 +224,15 @@ class Hackathon(object):
             )
         ]
 
+        if self.data['contents'].get('pre-meeting', False):
+            schedule_action.insert(1, FacebookGeneralAction(
+                message=Message(
+                    text='사전모임 일정\n:%s\n사전모임 일정 내용\n:%s' % (self.data['date']['pre-meeting'],
+                                                            self.data['contents']['pre-meeting'].strip())
+                )
+            )
+                                   )
+
         now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
         for idx, content in enumerate(self.data['contents']['main-meeting']):
             if (idx + 1) == len(self.data['contents']['main-meeting']):
@@ -232,7 +241,7 @@ class Hackathon(object):
                         message=Message(
                             attachment=TemplateAttachment(
                                 payload=ButtonTemplate(
-                                    text='본행사 %d년 %d월 %d일\n%s' % (now_date.year, now_date.month, now_date.day, content),
+                                    text='본행사 %d년 %d월 %d일\n%s' % (now_date.year, now_date.month, now_date.day, content.strip()),
                                     buttons=[
                                         UrlButton(title='참가신청하기', url=self.data['application']['url'])
                                     ]
@@ -245,20 +254,12 @@ class Hackathon(object):
                 schedule_action.append(
                     FacebookGeneralAction(
                         message=Message(
-                            text='본행사 %d년 %d월 %d일\n%s' % (now_date.year, now_date.month, now_date.day, content)
+                            text='본행사 %d년 %d월 %d일\n%s' % (now_date.year, now_date.month, now_date.day, content.strip())
                         )
                     )
                 )
 
             now_date = now_date + datetime.timedelta(days=1)
-
-        if self.data['contents'].get('pre-meeting', False):
-            schedule_action.insert(1, FacebookGeneralAction(
-                message=Message(
-                    text='사전모임 일정\n:%s\n사전모임 일정 내용\n:%s' % (self.data['date']['pre-meeting'],
-                                                      self.data['contents']['pre-meeting'])
-                )
-            ))
 
         designer_brick.append(
             FacebookBrick(
@@ -454,15 +455,15 @@ class Hackathon(object):
 
         if thanks.get('hoster', False):
             if thanks['hoster'].strip() != '':
-                sponsor_text.append('주최\n:%s' % thanks['hoster'])
+                sponsor_text.append('주최\n:%s' % thanks['hoster'].strip())
 
         if thanks.get('organizer', False):
             if thanks['organizer'].strip() != '':
-                sponsor_text.append('주관\n:%s' % thanks['organizer'])
+                sponsor_text.append('주관\n:%s' % thanks['organizer'].strip())
 
         if thanks.get('sponsor', False):
             if thanks['sponsor'].strip() != '':
-                sponsor_text.append('협찬\n:%s' % thanks['sponsor'])
+                sponsor_text.append('협찬\n:%s' % thanks['sponsor'].strip())
 
         designer_brick.append(
             FacebookBrick(
@@ -495,28 +496,29 @@ class Hackathon(object):
 
         if thanks.get('hoster', False):
             if thanks['hoster'].strip() != '':
-                sponsor_text.append('*주최*\n%s' % thanks['hoster'])
+                sponsor_text.append('*주최*\n%s' % thanks['hoster'].strip())
 
         if thanks.get('organizer', False):
             if thanks['organizer'].strip() != '':
-                sponsor_text.append('*주관*\n%s' % thanks['organizer'])
+                sponsor_text.append('*주관*\n%s' % thanks['organizer'].strip())
 
         if thanks.get('sponsor', False):
             if thanks['sponsor'].strip() != '':
-                sponsor_text.append('*협찬*\n%s' % thanks['sponsor'])
+                sponsor_text.append('*협찬*\n%s' % thanks['sponsor'].strip())
 
         schedule_text = '*%s의 진행 일정정보에요.*\n' % hackathon_name
         schedule_text += '\n*참가 신청 일정*\n%s ~ %s' % (self.data['date']['application_period']['start'],
                                                     self.data['date']['application_period']['end'])
 
-        now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
-        for idx, content in enumerate(self.data['contents']['main-meeting']):
-            schedule_text += '\n\n*본행사 %d년 %d월 %d일*\n%s' % (now_date.year, now_date.month, now_date.day, content)
-            now_date = now_date + datetime.timedelta(days=1)
-
         if self.data['contents'].get('pre-meeting', False):
             schedule_text += '\n\n*사전모임 일정*\n%s\n사전모임 일정 내용\n%s' % (self.data['date']['pre-meeting'],
-                                                              self.data['contents']['pre-meeting'])
+                                                                    self.data['contents']['pre-meeting'].strip())
+
+        now_date = dateutil.parser.parse(self.data['date']['main-meeting']['start'])
+        for idx, content in enumerate(self.data['contents']['main-meeting']):
+            schedule_text += '\n\n*본행사 %d년 %d월 %d일*\n%s' % (now_date.year, now_date.month, now_date.day, content.strip())
+            now_date = now_date + datetime.timedelta(days=1)
+
         place_text = ''
 
         if self.data['place'].get('pre-meeting', False):
