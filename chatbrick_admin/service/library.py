@@ -1,14 +1,14 @@
 import logging
 import os
 import uuid
-import json
+
 import requests
 from bs4 import BeautifulSoup
 from flask import request, url_for, send_from_directory
 from werkzeug.utils import secure_filename
 
-from chatbrick_admin import app, mongo3
-from chatbrick_admin.util.trans import allowed_file, as_json, get_facebook_account
+from chatbrick_admin import app
+from chatbrick_admin.util.trans import allowed_file, as_json
 
 logger = logging.getLogger(__name__)
 
@@ -106,60 +106,3 @@ def get_metas():
         'msg': '메타 데이터 가져오기가 실패했습니다.'
     }
 
-
-@app.route('/api/log/', methods=['POST'])
-@as_json
-def save_log_to_server():
-    log_type = request.form.get('log_type', 'request')
-    set_id = request.form.get('set_id', '')
-    brick_id = request.form.get('brick_id', '')
-    platform = request.form.get('platform', '')
-    start_time = request.form.get('start', '')
-    end_time = request.form.get('end', '')
-    data = request.form.get('data', {})
-    tag = request.form.get('tag', '')
-    elapsed_time = request.form.get('elapsed', '')
-    fb_id = get_facebook_account().get('fb_id', '')
-    remark = request.form.get('remark', '')
-
-    if fb_id is None or fb_id.strip() == '':
-        fb_id = request.form.get('fb_id', '')
-
-    try:
-        data = json.loads(data)
-    except Exception as ex:
-        data = request.form.get('data', {})
-        logger.error(ex)
-
-    if start_time != '' and end_time != '':
-        elapsed_time = int(end_time) - int(start_time)
-
-    rslt = mongo3.db.log.insert_one({
-        'fb_id': fb_id,
-        'type': log_type,
-        'platform': platform,
-        'set': set_id,
-        'brick': brick_id,
-        'start': start_time,
-        'end': end_time,
-        'elapsed': elapsed_time,
-        'data': data,
-        'tag': tag,
-        'remark': remark,
-    })
-
-    logger.info(rslt)
-    return {
-        'success': True
-    }
-
-
-@app.route('/api/log/error/', methods=['POST'])
-@as_json
-def save_error_msg():
-    req = request.get_json()
-    rslt = mongo3.db.brick_error.insert_one(req)
-    return {
-        'success': True,
-        'result': str(rslt.inserted_id)
-    }

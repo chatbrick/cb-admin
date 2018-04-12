@@ -1,8 +1,6 @@
 import blueforge.apis.telegram as tg
-import requests
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
     ImageAttachment, UrlButton
-from bs4 import BeautifulSoup
 
 from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction, \
     TelegramBrick, TelegramGeneralAction, TelegramBrickAction
@@ -241,10 +239,10 @@ class DesignerPortfolio(object):
         designer_brick.append(FacebookBrick(brick_type='postback', value='SEND_EMAIL_TO_USER',
                                             actions=[
                                                 FacebookBrickAction(
-                                                    brick_id='mailer',
-                                                    data=[
-
-                                                    ]
+                                                    brick_id='mailerforset',
+                                                    data={
+                                                        'to': self.data['basic']['email'].strip()
+                                                    }
                                                 )
                                             ]))
 
@@ -584,7 +582,7 @@ class DesignerPortfolio(object):
                                         [
                                             tg.CallbackButton(
                                                 text='Send E-Mail',
-                                                callback_data='BRICK|mailer|get_started'
+                                                callback_data='send_email'
                                             )
                                         ]
                                     ]
@@ -608,7 +606,7 @@ class DesignerPortfolio(object):
                                         [
                                             tg.CallbackButton(
                                                 text='Send E-Mail',
-                                                callback_data='BRICK|mailer|get_started'
+                                                callback_data='send_email'
                                             )
                                         ]
                                     ]
@@ -654,7 +652,25 @@ class DesignerPortfolio(object):
                 value='send_email',
                 actions=[
                     TelegramBrickAction(
-                        brick_id='mailer'
+                        brick_id='mailerforset',
+                        data={
+                            'to': self.data['basic']['email'].strip()
+                        }
+                    )
+                ]
+            )
+        )
+
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='callback',
+                value='send_email',
+                actions=[
+                    TelegramBrickAction(
+                        brick_id='mailerforset',
+                        data={
+                            'to': self.data['basic']['email'].strip()
+                        }
                     )
                 ]
             )

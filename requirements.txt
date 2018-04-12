@@ -5,3 +5,4 @@ requests==2.18.4
 blueforge
 beautifulsoup4==4.6.0
 lxml==4.1.1
+httpagentparser==1.8.1
