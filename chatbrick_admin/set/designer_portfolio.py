@@ -56,6 +56,7 @@ class DesignerPortfolio(object):
         if self.data['basic'].get('name') is None or self.data['basic']['name'].strip() == '':
             raise RuntimeError('이름이 입력되지 않았어요.')
 
+
     def make_the_bricks_for_facebook(self):
         designer_brick = []
 
@@ -675,7 +676,6 @@ class DesignerPortfolio(object):
                 ]
             )
         )
-
         return designer_brick
 
     def to_data(self):

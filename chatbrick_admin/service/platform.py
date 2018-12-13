@@ -1,11 +1,9 @@
 import logging
-import time
 
 import requests
 from flask import request, session
 
 from chatbrick_admin import app, mongo3
-from chatbrick_admin.util.log import save_log_on_server
 from chatbrick_admin.util.trans import as_json, get_facebook_account, publish
 
 logger = logging.getLogger(__name__)
@@ -28,20 +26,34 @@ def set_token_to_telegram(brick_id, telegram_token):
                                                upsert=False)
 
         if result.matched_count:
-            result_of_register = requests.post(url='https://api.telegram.org/bot%s/setWebhook' % telegram_token, data={
-                'url': 'https://www.chatbrick.io/webhooks/%s/tg/' % brick_id
-            })
+            requests.get(
+                url='https://www.chatbrick.io/webhooks/api/telegram/register/?token=%s&brick_id=%s' % (
+                    telegram_token, brick_id))
 
-            res = requests.get('https://api.telegram.org/bot%s/getMe' % telegram_token)
+            bot_name = mongo3.db.telegram_token.find_one({'token': telegram_token})
+
+            if bot_name is None:
+                res = requests.get('https://api.telegram.org/bot%s/getMe' % telegram_token).json()
+
+                if res.get('result', False):
+                    res = res.get('result')
+                    res['token'] = telegram_token
+                    bot_name = res
+                    mongo3.db.telegram_token.insert_one(res)
+
             return {
                 'success': True,
                 'facebook': get_facebook_account(),
                 'data': {
                     'matched_count': result.matched_count,
                     'modified_count': result.modified_count,
-                    'telegram': result_of_register.json(),
-                    'bot': res.json().get('result', {}),
-                    'published': publish(brick_id)
+                    'telegram': {
+                        'ok': True,
+                        'result': True,
+                        'description': "Webhook was set"
+                    },
+                    'bot': bot_name,
+                    'published': True
                 }
             }
         else:
@@ -54,15 +66,21 @@ def set_token_to_telegram(brick_id, telegram_token):
         result = mongo3.db.facebook.update_one({'id': brick_id}, {'$set': {'telegram.token': ''}},
                                                upsert=False)
         if result.matched_count:
-            result_of_register = requests.post(url='https://api.telegram.org/bot%s/deleteWebhook' % telegram_token)
+            requests.get(
+                url='https://www.chatbrick.io/webhooks/api/telegram/delete/?token=%s&brick_id=%s' % (
+                    telegram_token, brick_id))
             return {
                 'success': True,
                 'facebook': get_facebook_account(),
                 'data': {
                     'matched_count': result.matched_count,
                     'modified_count': result.modified_count,
-                    'telegram': result_of_register.json(),
-                    'published': publish(brick_id)
+                    'telegram': {
+                        'ok': True,
+                        'result': True,
+                        'description': "Webhook was set"
+                    },
+                    'published': True
                 }
             }
     return {
@@ -75,17 +93,16 @@ def set_token_to_telegram(brick_id, telegram_token):
 @app.route('/api/brick/<brick_id>/facebook/<page_id>/<access_token>/', methods=['PUT'])
 @as_json
 def set_token_to_facebook(brick_id, page_id, access_token):
-    task_start = int(time.time() * 1000)
-    log_id = None
-    user_id = None
     try:
         log_id = request.args.get('log_id', None)
         if request.method == 'PUT':
             user_inform = get_facebook_account()
+
             result = mongo3.db.facebook.update_one({'id': brick_id},
                                                    {'$set': {'page_id': page_id, 'access_token': access_token}},
                                                    upsert=False)
             user_id = user_inform.get('fb_id')
+
             if result.matched_count:
                 return {
                     'success': True,
@@ -93,7 +110,7 @@ def set_token_to_facebook(brick_id, page_id, access_token):
                     'data': {
                         'matched_count': result.matched_count,
                         'modified_count': result.modified_count,
-                        'published': publish(brick_id)
+                        'published': publish(brick_id, log_id=log_id, user_id=user_id)
                     }
                 }
         return {
@@ -101,26 +118,13 @@ def set_token_to_facebook(brick_id, page_id, access_token):
             'action': 'ERR0002',
             'msg': '세트가 존재하지 않아요.'
         }
-    finally:
-        if log_id is not None and user_id is not None:
-            save_log_on_server({
-                'log_id': log_id,
-                'user_id': user_id,
-                'user-agent': request.headers.get('User-Agent', None),
-                'task_code': 'reg_facebook',
-                'start': task_start,
-                'end': int(time.time() * 1000),
-                'remark': '챗브릭 서버에 페이스북 페이지 정보  등록'
-
-            })
+    except:
+        pass
 
 
 @app.route('/api/brick/<brick_id>/facebook/', methods=['DELETE'])
 @as_json
 def delete_token_to_facebook(brick_id):
-    task_start = int(time.time() * 1000)
-    log_id = None
-    user_id = None
     try:
         log_id = request.args.get('log_id', None)
 
@@ -138,7 +142,7 @@ def delete_token_to_facebook(brick_id):
                     'data': {
                         'matched_count': result.matched_count,
                         'modified_count': result.modified_count,
-                        'published': publish(brick_id)
+                        'published': publish(brick_id, log_id=log_id, user_id=user_id)
                     }
                 }
         return {
@@ -146,18 +150,22 @@ def delete_token_to_facebook(brick_id):
             'action': 'ERR0002',
             'msg': '세트가 존재하지 않습니다.'
         }
-    finally:
-        if log_id is not None and user_id is not None:
-            save_log_on_server({
-                'log_id': log_id,
-                'user_id': user_id,
-                'user-agent': request.headers.get('User-Agent', None),
-                'task_code': 'reg_facebook',
-                'start': task_start,
-                'end': int(time.time() * 1000),
-                'remark': '챗브릭 서버에 페이스북 페이지 정보 삭제'
-
-            })
+    except:
+        pass
+    # finally:
+    #     if log_id is not None and user_id is not None:
+    #         save_log_on_server({
+    #             'log_id': log_id,
+    #             'user_id': user_id,
+    #             'user-agent': request.headers.get('User-Agent', None),
+    #             'api_code': 'delete_token_to_facebook',
+    #             'api_provider_code': 'facebook',
+    #             'origin': 'admin_server',
+    #             'start': task_start,
+    #             'end': int(time.time() * 1000),
+    #             'remark': '챗브릭 서버에 페이스북 페이지 정보 삭제'
+    #
+    #         })
 
 
 @app.route('/api/user/platform/', methods=['GET'])

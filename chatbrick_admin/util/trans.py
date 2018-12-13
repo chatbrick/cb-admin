@@ -1,3 +1,4 @@
+import urllib.parse
 from functools import wraps
 from json import dumps
 
@@ -44,8 +45,15 @@ def get_facebook_account():
     }
 
 
-def publish(set_id):
-    publish_res = requests.post('https://www.chatbrick.io/webhooks/refresh/%s/' % set_id)
+def publish(set_id, log_id=None, user_id=None):
+    formatted_parameters = {}
+    if log_id is not None:
+        formatted_parameters['log_id'] = log_id
+    if user_id is not None:
+        formatted_parameters['user_id'] = user_id
+    publish_res = requests.post(
+        'https://www.chatbrick.io/webhooks/refresh/%s/?%s' % (set_id, urllib.parse.urlencode(formatted_parameters)))
+
     if publish_res.status_code == 200:
         return True
     else:

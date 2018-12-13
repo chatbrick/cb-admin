@@ -1,11 +1,12 @@
-import dateutil.parser
 import datetime
 
-from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, TelegramBrick, \
-    TelegramGeneralAction, TelegramBrickAction, FacebookBrickAction
-from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
-    ImageAttachment, UrlButton, ButtonTemplate, PhoneNumberButton
 import blueforge.apis.telegram as tg
+import dateutil.parser
+from blueforge.apis.facebook import Message, TemplateAttachment, Element, PostBackButton, GenericTemplate, \
+    ImageAttachment, UrlButton, ButtonTemplate, PhoneNumberButton
+
+from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, TelegramBrick, \
+    TelegramGeneralAction, FacebookBrickAction
 
 APPLY_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_apply.png'
 LOCATE_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_set01_locate.png'
@@ -218,17 +219,16 @@ class Hackathon(object):
             ),
             FacebookGeneralAction(
                 message=Message(
-                    text='참가 신청 일정\n%s ~ %s' % (self.data['date']['application_period']['start'],
+                    text='참가 신청 일정\n: %s ~ %s' % (self.data['date']['application_period']['start'],
                                                 self.data['date']['application_period']['end'])
                 )
             )
         ]
 
         if self.data['contents'].get('pre-meeting', False):
-            schedule_action.insert(1, FacebookGeneralAction(
+            schedule_action.append(FacebookGeneralAction(
                 message=Message(
-                    text='사전모임 일정\n:%s\n사전모임 일정 내용\n:%s' % (self.data['date']['pre-meeting'],
-                                                            self.data['contents']['pre-meeting'].strip())
+                    text='사전모임 일정\n: %s' % self.data['date']['pre-meeting']
                 )
             )
                                    )
@@ -426,9 +426,9 @@ class Hackathon(object):
                     value='SEND_EMAIL',
                     actions=[
                         FacebookBrickAction(
-                            brick_id='mailer',
+                            brick_id='mailerforset',
                             data={
-                                'receiver': self.data['basic']['email']
+                                'to': self.data['basic']['email']
                             }
                         )
                     ]
@@ -523,7 +523,7 @@ class Hackathon(object):
 
         if self.data['place'].get('pre-meeting', False):
             place_text += '*[사전행사 장소]*\n{name}\n{address}\n[지도보기]({url})\n\n'.format(
-                **self.data['place']['main-meeting'])
+                **self.data['place']['pre-meeting'])
 
         if self.data['place'].get('main-meeting', False):
             place_text += '*[본행사 장소]*\n{name}\n{address}\n[지도보기]({url})'.format(

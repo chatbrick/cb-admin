@@ -9,40 +9,12 @@ from flask import request, render_template
 from openpyxl import Workbook
 
 from chatbrick_admin import app, mongo3
+from chatbrick_admin.util.log import Pagination
 from chatbrick_admin.util.trans import as_json, get_facebook_account
 
 logger = logging.getLogger(__name__)
 
 
-@app.route('/api/log/', methods=['PUT'])
-@as_json
-def save_log_to_server():
-    req_json = request.get_json()
-    if 'log_id' not in req_json:
-        raise RuntimeError('로그 ID 값이 존재하지 않습니다.')
-
-    if 'start' not in req_json:
-        raise RuntimeError('시작 시간이 존재하지 않습니다.')
-
-    if 'end' not in req_json:
-        raise RuntimeError('종료 시간이 존재하지 않습니다.')
-
-    if 'task_code' not in req_json and 'api_code' not in req_json:
-        raise RuntimeError('Task 코드나 API 코드 중 하나는 존재해야합니다.')
-
-    if req_json.get('user_id') is None or str(req_json.get('user_id')).strip() == '':
-        req_json['user_id'] = get_facebook_account().get('fb_id', 'No_ID')
-
-    req_json['user-agent'] = request.headers.get('User-Agent', None)
-
-    mongo3.db.log.insert_one(req_json)
-
-    return {
-        'success': True
-    }
-
-
-@app.template_filter('strftime')
 def _jinja2_filter_datetime(date, fmt=None):
     try:
         if type(date) is str:
@@ -56,10 +28,44 @@ def _jinja2_filter_datetime(date, fmt=None):
         return ''
 
 
-@app.route('/api/log/download/', methods=['GET'])
+@app.route('/api/log_new/', methods=['PUT'])
 @as_json
-def download_log():
-    items = mongo3.db.log.find({}).sort([
+def save_log_new_to_server():
+    req_json = request.get_json()
+    if 'log_id' not in req_json:
+        raise RuntimeError('로그 ID 값이 존재하지 않습니다.')
+
+    if 'start' not in req_json:
+        raise RuntimeError('시작 시간이 존재하지 않습니다.')
+
+    if 'end' not in req_json:
+        raise RuntimeError('종료 시간이 존재하지 않습니다.')
+
+    if 'task_code' not in req_json and 'api_code' not in req_json:
+        raise RuntimeError('Task 코드나 API 코드 중 하나는 존재해야합니다.')
+
+    application = req_json.get('application', False)
+    if application and application == 'telegram':
+        if req_json.get('task_code', False):
+            if req_json['task_code'] in ('editMessageCaption', 'editMessageText'):
+                req_json['task_code'] = 'editMessageReplyMarkup'
+
+    if req_json.get('user_id') is None or str(req_json.get('user_id')).strip() == '':
+        req_json['user_id'] = get_facebook_account().get('fb_id', 'No_ID')
+
+    req_json['user-agent'] = request.headers.get('User-Agent', None)
+
+    mongo3.db.log_new.insert_one(req_json)
+
+    return {
+        'success': True
+    }
+
+
+@app.route('/api/log_new/download/', methods=['GET'])
+@as_json
+def download_log_new():
+    items = mongo3.db.log_new.find({}).sort([
         ('start', pymongo.DESCENDING),
         ('task_code', pymongo.DESCENDING),
         # ('start', pymongo.ASCENDING)
@@ -91,6 +97,7 @@ def download_log():
             result.append(item)
     export_data = []
     for result_item in result:
+
         if result_item.get('client_start', False):
             result_item['start_time'] = _jinja2_filter_datetime(result_item['client_start'])
             result_item['end_time'] = _jinja2_filter_datetime(result_item['client_end'])
@@ -124,8 +131,8 @@ def download_log():
     }
 
 
-@app.route('/api/log/', methods=['GET'])
-def get_log():
+@app.route('/api/log_new/', methods=['GET'])
+def get_log_new():
     log_type = request.args.get('type', False)
     page_size = int(request.args.get('pagesize', 50))
     page_num = int(request.args.get('page', 1))
@@ -137,7 +144,7 @@ def get_log():
 
     end_item = (start_item + page_size) - 1
 
-    items = mongo3.db.log.find({}).sort([
+    items = mongo3.db.log_new.find({}).sort([
         ('start', pymongo.DESCENDING),
         ('task_code', pymongo.DESCENDING),
         # ('start', pymongo.ASCENDING)
@@ -254,20 +261,23 @@ def get_log():
 
         result = sorted(result, key=lambda result: result['start'], reverse=True)
         total_item = len(result)
+        pagination = Pagination(page_num, page_size, total_item)
+
         end_page_num = math.ceil(total_item / page_size)
-        return render_template('log.html', result=result[start_item:end_item + 1], page={
+        return render_template('log_new.html', result=result[start_item:end_item + 1], page={
             'end': range(1, int(end_page_num) + 1),
             'total': total_item,
             'size': page_size,
-            'num': page_num
-        })
+            'num': page_num,
+        },
+                               pagination=pagination)
 
 
-@app.route('/api/log/<log_id>/', methods=['GET'])
-def get_log_detail(log_id):
+@app.route('/api/log_new/<log_id>/', methods=['GET'])
+def get_log_new_detail(log_id):
     result = []
 
-    items = mongo3.db.log.find({'log_id': log_id}).sort([
+    items = mongo3.db.log_new.find({'log_id': log_id}).sort([
         ('task_code', pymongo.DESCENDING),
     ]).sort([
         ('start', pymongo.ASCENDING)
@@ -283,14 +293,3 @@ def get_log_detail(log_id):
             result.append(item)
 
     return render_template('log_detail.html', items=result)
-
-
-@app.route('/api/log/error/', methods=['POST'])
-@as_json
-def save_error_msg():
-    req = request.get_json()
-    rslt = mongo3.db.brick_error.insert_one(req)
-    return {
-        'success': True,
-        'result': str(rslt.inserted_id)
-    }

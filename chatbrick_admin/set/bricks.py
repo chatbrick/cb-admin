@@ -1,11 +1,10 @@
 import logging
-import requests
-from bs4 import BeautifulSoup
+
+import blueforge.apis.telegram as tg
+from blueforge.apis.facebook import Message, TemplateAttachment, Element, PostBackButton, GenericTemplate
+
 from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction, \
     TelegramBrick, TelegramGeneralAction, TelegramBrickAction
-from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
-    ImageAttachment, UrlButton
-import blueforge.apis.telegram as tg
 
 logger = logging.getLogger(__name__)
 
@@ -171,19 +170,6 @@ class Bricks(object):
                             ]
                         )
                 )
-                # 임시로 제거한다.
-                # designer_brick.append(
-                #     TelegramBrick(
-                #         brick_type='bot_command',
-                #         value=keyword,
-                #         actions=[
-                #             TelegramBrickAction(
-                #                 brick_id=brick['id'],
-                #                 data=brick['data']
-                #             )
-                #         ]
-                #     )
-                # )
 
             for brick_rec in self.bricks:
                 if brick_rec['id'] == brick['id']:
