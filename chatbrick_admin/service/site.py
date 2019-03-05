@@ -9,6 +9,10 @@ from chatbrick_admin import app, mongo3
 
 logger = logging.getLogger(__name__)
 
+@app.route('/', methods=['GET'])
+def wth():
+    return 'ok'
+
 
 @app.route('/api/test/brick/<brick_id>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def brick_by_id(brick_id):
