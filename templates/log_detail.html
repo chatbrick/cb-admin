@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css"
+          integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+
+</head>
+{#Log ID	User ID	OS	Application	Client ST	Server ST	Server ET	Client ET	Task Code	API Code	API Provider Code	Origin	API ST	API ED	Remark#}
+<body>
+<table class="table">
+    <thead>
+    <tr>
+        <th>API 제공자</th>
+        <th>API</th>
+        <th>상위 API</th>
+        <th>API 호출</th>
+        <th>시작</th>
+        <th>종료</th>
+        <th>소요시간(ms)</th>
+        <th>비고</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+        <tr {% if item.api_provider_code != 'chatbrick' %}class="table-active"{% endif %}>
+            <td>{{ item.api_provider_code }}</td>
+            <td>{{ item.api_code }}</td>
+            <td>{{ item.parent_api_code }}</td>
+            <td>{{ item.origin }}</td>
+            <td>{{ item.start }}</td>
+            <td>{{ item.end }}</td>
+            <td>{{ item.remain_time }}</td>
+            <td>{{ item.remark }}</td>
+
+        </tr>
+    {% endfor %}
+
+    </tbody>
+</table>
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"
+        integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
+        integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
+        crossorigin="anonymous"></script>
+
+</body>
+</html>

@@ -1,8 +1,9 @@
-import requests
-from bs4 import BeautifulSoup
-from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction
+import blueforge.apis.telegram as tg
 from blueforge.apis.facebook import Message, TemplateAttachment, ListTemplate, Element, PostBackButton, GenericTemplate, \
     ImageAttachment, UrlButton
+
+from chatbrick_admin.set.template import Container, FacebookBrick, FacebookGeneralAction, FacebookBrickAction, \
+    TelegramBrick, TelegramGeneralAction, TelegramBrickAction
 
 WORK_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_work_ex.png'
 SPECIALTIES_IMAGE_URL = 'https://www.chatbrick.io/api/static/img_specialties.png'
@@ -50,9 +51,15 @@ class DesignerPortfolio(object):
         self.fb_id = fb_id
         self.req = req
         self.data = req['data']
+        self.result_data = []
 
-    def make_the_bricks(self):
+        if self.data['basic'].get('name') is None or self.data['basic']['name'].strip() == '':
+            raise RuntimeError('이름이 입력되지 않았어요.')
+
+
+    def make_the_bricks_for_facebook(self):
         designer_brick = []
+
         # get_started (1.1, 1.2)
         designer_brick.append(FacebookBrick(brick_type='postback', value='get_started', actions=[
             FacebookGeneralAction(message=Message(text=self.data['custom_settings']['get_started'])),
@@ -106,7 +113,7 @@ class DesignerPortfolio(object):
         ]))
 
         # Work / 2.1.1
-        if len(self.data['work']):
+        if self.data.get('work', False) and len(self.data['work']):
             work_element = [
                 Element(title='Work',
                         subtitle='%s님의 경력 사항입니다.' % self.data['basic']['name'],
@@ -114,6 +121,9 @@ class DesignerPortfolio(object):
             ]
 
             for work in self.data['work']:
+                if work['name'].strip() == '':
+                    raise RuntimeError('경력의 근무 회사의 이름이 없어요.')
+
                 work_element.append(Element(title=work['name'], subtitle='{period}\n{field}'.format(**work)))
 
             designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_WORK', actions=[
@@ -131,7 +141,7 @@ class DesignerPortfolio(object):
             ]))
 
         # Specialties / 2.1.2
-        if len(self.data['specialties']):
+        if self.data.get('specialties', False) and len(self.data['specialties']):
             special_element = [
                 Element(title='Specialties',
                         subtitle='%s님의 보유기술 및 능력입니다.' % self.data['basic']['name'],
@@ -139,6 +149,12 @@ class DesignerPortfolio(object):
             ]
 
             for special in self.data['specialties']:
+                if special['name'].strip() == '':
+                    raise RuntimeError('보유 기술의 이름이 없어요.')
+
+                if special['detail'].strip() == '':
+                    raise RuntimeError('보유 기술의 설명이 없어요.')
+
                 special_element.append(Element(title=special['name'], subtitle=special['detail']))
 
             designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SPECIALTIES', actions=[
@@ -157,7 +173,7 @@ class DesignerPortfolio(object):
             ]))
 
         # Summary / 2.1.3
-        if self.data['summary']:
+        if self.data.get('summary', False) and self.data['summary'].strip() != '':
             designer_brick.append(FacebookBrick(brick_type='postback', value='VIEW_USERS_SUMMARY', actions=[
                 FacebookGeneralAction(message=Message(
                     attachment=ImageAttachment(url=SUMMARY_IMAGE_URL)
@@ -173,7 +189,7 @@ class DesignerPortfolio(object):
             ]))
 
         # Contact / 4
-        if self.data['basic'].get('email', False):
+        if self.data['basic'].get('email', False) and self.data['basic']['email'].strip() != '':
             designer_brick.append(FacebookBrick(brick_type='postback', value='CONTACT', actions=[
                 FacebookGeneralAction(message=Message(
                     attachment=TemplateAttachment(
@@ -196,23 +212,15 @@ class DesignerPortfolio(object):
                     message=Message(text='%s님이 아직 이메일을 입력하지 않았습니다.' % self.data['basic']['name']))
             ]))
 
-        if self.data.get('portfolio', False) and self.data['portfolio']:
+        if self.data.get('portfolio', False) and len(self.data['portfolio']):
             temp_element = []
 
             for portfolio in self.data['portfolio'][:10]:
-                res = requests.get(portfolio,
-                                   headers={
-                                       'User-Agent': 'TelegramBot (like TwitterBot)',
-                                       'Accept': 'text/html'
-                                   })
-
-                soup = BeautifulSoup(res.text, 'lxml')
-
-                temp_element.append(Element(title=soup.find('meta', {'property': 'og:title'}).get('content'),
-                                            subtitle=soup.find('meta', {'property': 'og:description'}).get('content'),
-                                            image_url=soup.find('meta', {'property': 'og:image'}).get('content'),
+                temp_element.append(Element(title=portfolio['title'],
+                                            subtitle=portfolio['sub_title'],
+                                            image_url=portfolio['image_url'],
                                             buttons=[
-                                                UrlButton(title='View', url=portfolio)
+                                                UrlButton(title='View', url=portfolio['url'])
                                             ]
                                             ))
 
@@ -232,16 +240,445 @@ class DesignerPortfolio(object):
         designer_brick.append(FacebookBrick(brick_type='postback', value='SEND_EMAIL_TO_USER',
                                             actions=[
                                                 FacebookBrickAction(
-                                                    brick_id='mailer',
-                                                    data=[
-
-                                                    ]
+                                                    brick_id='mailerforset',
+                                                    data={
+                                                        'to': self.data['basic']['email'].strip()
+                                                    }
                                                 )
                                             ]))
 
         return designer_brick
 
+    def make_the_bricks_for_telegram(self):
+        designer_brick = []
+
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='bot_command',
+                value='start',
+                actions=[
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text=self.data['custom_settings']['get_started']
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.SendPhoto(
+                            photo=self.data['basic']['profile_image'],
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text='*[{name}]*'.format(
+                                **self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=tg.MarkUpContainer(
+                                inline_keyboard=[
+                                    [
+                                        tg.CallbackButton(
+                                            text='Profile',
+                                            callback_data='profile'
+                                        ),
+                                        tg.CallbackButton(
+                                            text='Portfolio',
+                                            callback_data='portfolio'
+                                        )
+                                    ],
+                                    [
+                                        tg.CallbackButton(
+                                            text='Contact',
+                                            callback_data='contact'
+                                        )
+                                    ]
+                                ]
+                            )
+                        )
+                    )
+                ]
+            )
+        )
+        work_text = '%s님의 경력사항입니다.' % self.data['basic']['name']
+
+        for work in self.data['work']:
+            work_text += '\n\n*{name}*\n{period}\n{field}'.format(**work)
+
+        special_text = '%s님의 보유기술 및 능력입니다' % self.data['basic']['name']
+
+        for spc in self.data['specialties']:
+            special_text += '\n\n*{name}*\n{detail}'.format(**spc)
+
+        reply_markup = tg.MarkUpContainer(
+            inline_keyboard=[
+                [
+                    tg.CallbackButton(
+                        text='Profile',
+                        callback_data='EDIT|profile|3'
+                    ),
+                    tg.CallbackButton(
+                        text='Work',
+                        callback_data='EDIT|profile|0'
+                    )
+                ],
+                [
+                    tg.CallbackButton(
+                        text='Specialties',
+                        callback_data='EDIT|profile|1'
+                    ),
+                    tg.CallbackButton(
+                        text='Summary',
+                        callback_data='EDIT|profile|2'
+                    )
+                ]
+            ]
+        )
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='callback',
+                value='profile',
+                actions=[
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text='*{name}*\n{special}\n{residence}\n[{social}]({social})'.format(**self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    )
+                ],
+                edits=[
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=work_text,
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=special_text,
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=self.data['summary'],
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text='*{name}*\n{special}\n{residence}\n[{social}]({social})'.format(**self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    )
+                ]
+            )
+        )
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='bot_command',
+                value='profile',
+                actions=[
+                    TelegramGeneralAction(
+                        message=tg.SendMessage(
+                            text='*{name}*\n{special}\n{residence}\n[{social}]({social})'.format(**self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    )
+                ],
+                edits=[
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=work_text,
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=special_text,
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text=self.data['summary'],
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    ),
+                    TelegramGeneralAction(
+                        message=tg.EditMessageText(
+                            text='*{name}*\n{special}\n{residence}\n[{social}]({social})'.format(**self.data['basic']),
+                            parse_mode='Markdown',
+                            reply_markup=reply_markup
+                        )
+                    )
+                ]
+            )
+        )
+        if self.data.get('portfolio', False) and self.data['portfolio']:
+            temp_element = []
+            for idx, portfolio in enumerate(self.data['portfolio'][:10]):
+                temp_element.append(
+                    tg.CallbackButton(
+                        text=portfolio['title'],
+                        callback_data='VIEW_PORTFOLIO_%d' % idx
+                    )
+                )
+                caption = '*%s*\n%s' % (portfolio['title'], portfolio['sub_title'])
+                if len(caption) > 200:
+                    caption = caption[:196] + '...'
+
+                designer_brick.append(
+                    TelegramBrick(
+                        brick_type='callback',
+                        value='VIEW_PORTFOLIO_%d' % idx,
+                        actions=[
+                            TelegramGeneralAction(
+                                message=tg.SendPhoto(
+                                    photo=portfolio['image_url'],
+                                    caption=caption,
+                                    parse_mode='Markdown',
+                                    reply_markup=tg.MarkUpContainer(
+                                        inline_keyboard=[
+                                            [
+
+                                                tg.UrlButton(
+                                                    text='View',
+                                                    url=portfolio['url']
+                                                )
+
+                                            ],
+                                            [
+                                                tg.CallbackButton(
+                                                    text='Prev',
+                                                    callback_data='VIEW_PORTFOLIO_%d' % (idx - 1)
+                                                ),
+                                                tg.CallbackButton(
+                                                    text='Next',
+                                                    callback_data='VIEW_PORTFOLIO_%d' % (idx + 1)
+                                                )
+                                            ]
+
+                                        ]
+                                    )
+                                )
+                            )
+                            # TelegramGeneralAction(
+                            #     message=tg.SendPhoto(
+                            #         photo=portfolio['image_url']
+                            #     )
+                            # ),
+                            # TelegramGeneralAction(
+                            #     message=tg.SendMessage(
+                            #         text='*%s*\n%s' % (portfolio['title'],
+                            #                            portfolio['sub_title']),
+                            #         parse_mode='Markdown',
+                            #         reply_markup=tg.MarkUpContainer(
+                            #             inline_keyboard=[
+                            #                 [
+                            #                     tg.UrlButton(
+                            #                         text='View',
+                            #                         url=portfolio['url']
+                            #                     )
+                            #                 ]
+                            #             ]
+                            #         )
+                            #     )
+                            # )
+                        ]
+                    )
+                )
+
+            temp_idx = 0
+            temp_len = len(temp_element)
+            temp_array = []
+            for i in range(0, round(temp_len / 2)):
+                temp_sub_array = []
+                for a in range(0, 2):
+                    if temp_idx == temp_len:
+                        break
+                    temp_sub_array.append(temp_element[temp_idx])
+                    temp_idx += 1
+                temp_array.append(temp_sub_array)
+
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='callback',
+                    value='portfolio',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='Portfolio',
+                                reply_markup=tg.MarkUpContainer(
+                                    inline_keyboard=temp_array
+                                )
+                            )
+                        )
+                    ]
+                )
+            )
+
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='bot_command',
+                    value='portfolio',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='Portfolio',
+                                reply_markup=tg.MarkUpContainer(
+                                    inline_keyboard=temp_array
+                                )
+                            )
+                        )
+                    ]
+                )
+            )
+        else:
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='callback',
+                    value='portfolio',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='아직 Portfolio 항목을 입력하지 않았습니다.',
+                            )
+                        )
+                    ]
+                )
+            )
+
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='bot_command',
+                    value='portfolio',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='아직 Portfolio 항목을 입력하지 않았습니다.',
+                            )
+                        )
+                    ]
+                )
+            )
+        if self.data['basic'].get('email', False):
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='callback',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='자세한 문의는 아래의 메일보내기 버튼을 이용해주세요.',
+                                parse_mode='Markdown',
+                                reply_markup=tg.MarkUpContainer(
+                                    inline_keyboard=[
+                                        [
+                                            tg.CallbackButton(
+                                                text='Send E-Mail',
+                                                callback_data='send_email'
+                                            )
+                                        ]
+                                    ]
+                                )
+                            )
+                        )
+                    ]
+                )
+            )
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='bot_command',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='자세한 문의는 아래의 메일보내기 버튼을 이용해주세요.',
+                                parse_mode='Markdown',
+                                reply_markup=tg.MarkUpContainer(
+                                    inline_keyboard=[
+                                        [
+                                            tg.CallbackButton(
+                                                text='Send E-Mail',
+                                                callback_data='send_email'
+                                            )
+                                        ]
+                                    ]
+                                )
+                            )
+                        )
+                    ]
+                )
+            )
+        else:
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='callback',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='이메일이 입력되어 있지 않습니다.',
+                                parse_mode='Markdown'
+                            )
+                        )
+                    ]
+                )
+            )
+            designer_brick.append(
+                TelegramBrick(
+                    brick_type='bot_command',
+                    value='contact',
+                    actions=[
+                        TelegramGeneralAction(
+                            message=tg.SendMessage(
+                                text='이메일이 입력되어 있지 않습니다.',
+                                parse_mode='Markdown'
+                            )
+                        )
+                    ]
+                )
+            )
+
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='bot_command',
+                value='send_email',
+                actions=[
+                    TelegramBrickAction(
+                        brick_id='mailerforset',
+                        data={
+                            'to': self.data['basic']['email'].strip()
+                        }
+                    )
+                ]
+            )
+        )
+
+        designer_brick.append(
+            TelegramBrick(
+                brick_type='callback',
+                value='send_email',
+                actions=[
+                    TelegramBrickAction(
+                        brick_id='mailerforset',
+                        data={
+                            'to': self.data['basic']['email'].strip()
+                        }
+                    )
+                ]
+            )
+        )
+        return designer_brick
+
     def to_data(self):
         return Container(name=self.req['name'], desc=self.req['desc'], persistent_menu=PERSISTENT_MENU,
-                         bricks=self.make_the_bricks(),
+                         bricks=self.make_the_bricks_for_facebook(), telegram=self.make_the_bricks_for_telegram(),
                          user_id=self.fb_id, type='portfolio', id=self.req.get('id', None)).to_data()

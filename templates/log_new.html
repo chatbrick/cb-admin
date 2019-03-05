@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css"
+          integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+
+</head>
+{#사용자 아이디	OS	어플리케이션	TTA_target_function	"Log#}
+{#FunctionName"	소요시간(ms)#}
+<body>
+<div class="container">
+
+    <div class="row">
+        <div class="col">
+            <a href="?type=detail">
+                <button type="button" class="btn btn-primary">상세 페이지</button>
+            </a>
+            <button type="button" class="btn btn-primary" id="excel_download">엑셀 다운로드</button>
+        </div>
+        <div class="col text-right">
+
+            <div class="dropdown show">
+                <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Page Size
+                </a>
+
+                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                    <a class="dropdown-item" href="?pagesize=10">10</a>
+                    <a class="dropdown-item" href="?pagesize=20">20</a>
+                    <a class="dropdown-item" href="?pagesize=50">50</a>
+                    <a class="dropdown-item" href="?pagesize=100">100</a>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <h1>모바일 로그 조회</h1>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">생성일</th>
+            <th>사용자아이디</th>
+            {#            <th>OS</th>#}
+            <th>어플리케이션</th>
+            <th>Function</th>
+            <th>시작시간</th>
+            <th>종료시간</th>
+            <th>소요시간(ms)</th>
+            <th>상세보기</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for values in result %}
+            {% set count = values.api|length + 1 %}
+            <tr>
+                {% if values.client_start %}
+                    <td>{{ values.client_start|strftime }}</td>
+                {% elif values.server_start %}
+                    <td>{{ values.server_start|strftime }}</td>
+                {% else %}
+                    <td>&nbsp;</td>
+                {% endif %}
+                <td>{{ values.user_id }}</td>
+                {#                <td>{{ values.os }}</td>#}
+                <td>{{ values.application }}</td>
+                <td>{{ values.task_code }}</td>
+                {% if values.client_start %}
+                    <td>{{ values.client_start|strftime }}</td>
+                    <td>{{ values.client_end|strftime }}</td>
+                {% elif values.server_start %}
+                    <td>{{ values.server_start|strftime }}</td>
+                    <td>{{ values.server_end|strftime }}</td>
+                {% else %}
+                    <td>&nbsp;</td>
+                {% endif %}
+                <td>{{ values.remain_time }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary"
+                            onclick="window.open('/api/log_new/{{ values.log_id }}/', '상세보기', 'height=250,width=1200');">
+                        상세보기
+                    </button>
+                </td>
+            </tr>
+
+            {#        {% for api in values.api|reverse %}#}
+            {#            {% set api_remain_time = api.end - api.start %}#}
+            {#            <tr>#}
+            {#                <td>{{ api.parent_api_code }}</td>#}
+            {#                <td>{{ api.api_code }}</td>#}
+            {#                <td>{{ api.api_provider_code }}</td>#}
+            {#                <td>{{ api.origin }}</td>#}
+            {#                <td>{{ api.start|strftime }}</td>#}
+            {#                <td>{{ api.end|strftime }}</td>#}
+            {#                <td>{{ api_remain_time }}</td>#}
+            {#                <td>{{ api.remark }}</td>#}
+            {#            </tr>#}
+            {#        {% endfor %}#}
+        {% endfor %}
+        </tbody>
+
+    </table>
+</div>
+
+<nav aria-label="Page navigation example">
+    <ul class="pagination justify-content-center">
+        {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="?pagesize={{ page.size }}&page={{ pagination.page - 1 }}"
+                   aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                    <span class="sr-only">Previous</span>
+                </a>
+            </li>
+        {% endif %}
+        {%- for page_s in pagination.iter_pages() %}
+            {% if page_s %}
+                {% if page_s != pagination.page %}
+                    <li class="page-item"><a class="page-link"
+                                             href="?pagesize={{ page.size }}&page={{ page_s }}">{{ page_s }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item active"><a class="page-link"
+                                                    href="?pagesize={{ page.size }}&page={{ page_s }}">{{ page_s }}</a>
+                    </li>                {% endif %}
+            {% else %}
+                {#                <span class=ellipsis>…</span>#}
+            {% endif %}
+        {%- endfor %}
+        {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?pagesize={{ page.size }}&page={{ pagination.page + 1 }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                    <span class="sr-only">Next</span>
+                </a>
+            </li>
+        {% endif %}
+
+
+    </ul>
+</nav>
+
+
+{% macro render_pagination(pagination) %}
+    <div class=pagination>
+
+
+    </div>
+{% endmacro %}
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"
+        integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
+        integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
+        crossorigin="anonymous"></script>
+<script>
+    $('#log_detail').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget) // Button that triggered the modal
+        var recipient = button.data('logid') // Extract info from data-* attributes
+        var modal = $(this);
+
+        $.ajax({
+            url: "/api/log_new/" + recipient + "/"
+        }).done(function (data) {
+            result_html = "";
+
+            $.each(data.data, function (index, value) {
+
+                result_html += '<tr><td>' + value.api_provider_code + '</td>';
+                result_html += '<td>' + value.api_code + '</td>';
+                result_html += '<td>' + value.parent_api_code + '</td>';
+                result_html += '<td>' + value.origin + '</td>';
+                result_html += '<td>' + value.start + '</td>';
+                result_html += '<td>' + value.end + '</td>';
+                result_html += '<td>&nbsp;</td>';
+                result_html += '<td>' + value.remark + '</td></tr>';
+
+            });
+            console.log(result_html);
+            $("#log_detail_body").html(result_html);
+            modal.find('.log_detail_body').html(result_html);
+
+        });
+        {#modal.find('.modal-body input').val(recipient)#}
+    });
+
+    $(document).ready(function () {
+        $("#excel_download").click(function () {
+            $.ajax({
+                url: "/api/log_new/download/"
+            }).done(function (data) {
+                window.open(data.url);
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

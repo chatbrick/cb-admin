@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css"
+          integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+
+</head>
+{#사용자 아이디	OS	어플리케이션	대상기능	실행 기능	클라이언트 시작	서버 시작	서버 종료	클라이언트 종료	총 소요시간(ms)	API 제공자	API	상위 API	API 호출	시작	종료	소요시간(ms)	비고#}
+<body>
+
+<div class="row">
+    <div class="col">
+        <a href="?">
+            <button type="button" class="btn btn-primary">요약 페이지</button>
+        </a>
+    </div>
+    <div class="col text-right">
+        <div class="dropdown show">
+            <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Page Size
+            </a>
+
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                <a class="dropdown-item" href="?pagesize=10&type=detail">10</a>
+                <a class="dropdown-item" href="?pagesize=20&type=detail">20</a>
+                <a class="dropdown-item" href="?pagesize=50&type=detail">50</a>
+                <a class="dropdown-item" href="?pagesize=100&type=detail">100</a>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+<h1>로그 조회</h1>
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">사용자ID</th>
+        <th>OS</th>
+        <th>어플리케이션</th>
+        <th>대상 기능</th>
+        <th>실행 기능</th>
+        <th>클라이언트 시작</th>
+        <th>서버 시작</th>
+        <th>서버 종료</th>
+        <th>클라이언트 종료</th>
+        <th>총 소요시간(초)</th>
+        <th>API 제공자</th>
+        <th>API</th>
+        <th>상위 API</th>
+        <th>API 호출</th>
+        <th>시작</th>
+        <th>종료</th>
+        <th>소요시간 (ms)</th>
+        <th>비고</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for key, values in result.items() %}
+        {% set count = values.api|length + 1 %}
+        <tr>
+            <td rowspan="{{ count }}">{{ values.user_id }}</td>
+            <td rowspan="{{ count }}">{{ values.os }}</td>
+            <td rowspan="{{ count }}">{{ values.application }}</td>
+            <td rowspan="{{ count }}">{{ values.task_code }}</td>
+            <td rowspan="{{ count }}">&nbsp;</td>
+            <td rowspan="{{ count }}">{{ values.client_start|strftime }}</td>
+            <td rowspan="{{ count }}">{{ values.server_start|strftime }}</td>
+            <td rowspan="{{ count }}">{{ values.server_end|strftime }}</td>
+            <td rowspan="{{ count }}">{{ values.client_end|strftime }}</td>
+            <td rowspan="{{ count }}">{{ values.remain_time }}</td>
+            {% if values.api|length == 0 %}
+                {#                {% if values.end and values.start %}#}
+                {#                    {% set api_remain_time = values.end - values.start %}#}
+                {#                {% endif %}#}
+                <td>{{ values.api_provider_code }}</td>
+                <td>{{ values.api_code }}</td>
+                <td>{{ values.parent_api_code }}</td>
+                <td>{{ values.origin }}</td>
+                <td>{{ values.start|strftime }}</td>
+                <td>{{ values.end|strftime }}</td>
+                <td>{{ api_remain_time }}</td>
+                <td>{{ values.remark }}</td>
+            {% endif %}
+        </tr>
+        {% for api in values.api|reverse %}
+            {% if values.end and values.start %}
+                {% set api_remain_time = api.end - api.start %}
+            {% endif %}
+            <tr>
+                <td>{{ api.api_provider_code }}</td>
+                <td>{{ api.api_code }}</td>
+                <td>{{ api.parent_api_code }}</td>
+                <td>{{ api.origin }}</td>
+                <td>{{ api.start|strftime }}</td>
+                <td>{{ api.end|strftime }}</td>
+                <td>{{ api_remain_time }}</td>
+                <td>{{ api.remark }}</td>
+            </tr>
+        {% endfor %}
+    {% endfor %}
+    </tbody>
+
+</table>
+<nav aria-label="Page navigation example">
+    <ul class="pagination justify-content-center">
+        <li class="page-item">
+            <a class="page-link" href="#" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+                <span class="sr-only">Previous</span>
+            </a>
+        </li>
+        {% for num in page.end %}
+        <li class="page-item {% if num == page.num %}active{% endif %}"><a class="page-link" href="?pagesize={{ page.size }}&page={{ num }}&type=detail">{{ num }}</a></li>
+        {% endfor %}
+        <li class="page-item">
+            <a class="page-link" href="#" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+                <span class="sr-only">Next</span>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"
+        integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
+        integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
+        crossorigin="anonymous"></script>
+</body>
+</html>
